@@ -4,7 +4,7 @@
   "main": "./main.ts",
   "scripts": {
     "dev": "bun dev-compile & bun dev-serve",
-    "dev-compile": "bun build --watch app.tsx --outdir res",
+    "dev-compile": "bun build --watch src/app.tsx --outdir res",
     "dev-serve": "bun x serve -L -p 5000 res"
   },
   "devDependencies": {
