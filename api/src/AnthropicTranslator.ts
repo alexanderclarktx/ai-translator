@@ -96,6 +96,7 @@ const createTranslate =
     }
 
     const model = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5" // "claude-sonnet-4-6"
+    const requestStartedAt = performance.now()
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -125,6 +126,8 @@ const createTranslate =
         }
       })
     })
+    const responseDurationMs = performance.now() - requestStartedAt
+    console.log(`[anthropic] response received in ${responseDurationMs}ms (status ${response.status.toFixed(0)})`)
 
     const data = (await response.json()) as AnthropicMessageResponse
 
