@@ -1,14 +1,7 @@
+import { TranslateModel, TranslateWsRequestMessage, TranslateWsServerMessage } from "@template/core"
+import { LanguageOption, ModelSwitch, TextPane, TranslateToolbar } from "@template/web"
 import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
-import type {
-  TranslateModel,
-  TranslateWsRequestMessage,
-  TranslateWsServerMessage
-} from "@template/core"
-import type { LanguageOption } from "./components/LanguagePicker"
-import { ModelSwitch } from "./components/ModelSwitch"
-import { TextPane } from "./components/TextPane"
-import { TranslateToolbar } from "./components/TranslateToolbar"
 
 const languageOptions: LanguageOption[] = [
   { label: "English", value: "English" },
@@ -236,13 +229,13 @@ const App = () => {
   }, [debouncedRequest, isSocketOpen, isTranslating])
 
   return (
-      <main>
-        <header>
-          <h1>
-            <img src="/favicon.svg" alt="" aria-hidden="true" className="title-icon" />
-            <span>Piggo Translate</span>
-          </h1>
-        </header>
+    <main>
+      <header>
+        <h1>
+          <img src="/favicon.svg" alt="" aria-hidden="true" className="title-icon" />
+          <span>Piggo Translate</span>
+        </h1>
+      </header>
 
       <TranslateToolbar
         errorText={errorText}

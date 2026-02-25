@@ -6,11 +6,7 @@ type ModelSwitchProps = {
   className?: string
 }
 
-const ModelSwitch = ({
-  selectedModel,
-  onModelToggle,
-  className
-}: ModelSwitchProps) => {
+const ModelSwitch = ({ selectedModel, onModelToggle, className }: ModelSwitchProps) => {
   const useOpenAi = selectedModel === "openai"
 
   return (
@@ -24,9 +20,6 @@ const ModelSwitch = ({
         onModelToggle(useOpenAi ? "anthropic" : "openai")
       }}
     >
-      {/* <span className="model-switch-track" aria-hidden="true">
-        <span className="model-switch-thumb" />
-      </span> */}
       <span className="model-switch-text">
         {useOpenAi ? "OpenAI" : "Anthropic"}
       </span>
