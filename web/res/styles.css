@@ -54,6 +54,68 @@ main {
   align-items: center;
 }
 
+.model-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgba(16, 24, 32, 0.16);
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem 0.3rem 0.35rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, box-shadow 180ms ease-out,
+    transform 160ms ease-out;
+}
+
+.model-switch:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 24, 32, 0.1);
+}
+
+.model-switch:focus-visible {
+  outline: 2px solid #1f2937;
+  outline-offset: 2px;
+}
+
+.model-switch-track {
+  width: 2.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: #a9b7c7;
+  position: relative;
+  transition: background-color 160ms ease-out;
+}
+
+.model-switch[aria-checked="true"] .model-switch-track {
+  background: #3786da;
+}
+
+.model-switch-thumb {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: #ffffff;
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.model-switch[aria-checked="true"] .model-switch-thumb {
+  transform: translateX(1rem);
+}
+
+.model-switch-text {
+  min-width: 5.4rem;
+  text-align: left;
+  font-weight: 600;
+}
+
 .language-picker {
   display: grid;
   gap: 0.45rem;
@@ -263,6 +325,15 @@ main {
   line-height: 1.35;
 }
 
+.pane-switch-row {
+  width: 100%;
+  max-width: 600px;
+  margin-inline: auto;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.35rem;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -275,7 +346,10 @@ main {
   }
 
   .language-bubble,
-  .translate-button {
+  .translate-button,
+  .model-switch,
+  .model-switch-thumb,
+  .model-switch-track {
     transition: background-color 120ms linear, border-color 120ms linear,
       box-shadow 120ms linear;
     transform: none;

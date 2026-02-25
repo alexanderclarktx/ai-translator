@@ -1,11 +1,13 @@
 import {
-  formatUptime, TranslateWsClientMessage, TranslateWsServerMessage
+  formatUptime, TranslateModel, TranslateWsClientMessage, TranslateWsServerMessage
 } from "@template/core"
 import { AnthropicTranslator } from "./AnthropicTranslator"
+import { OpenAiTranslator } from "./OpenAiTranslator"
 
 type TranslateRequestBody = {
   text: string
   targetLanguage: string
+  model?: TranslateModel
 }
 
 const corsHeaders = {
@@ -51,27 +53,24 @@ const logServerError = (context: string, error: unknown) => {
 
 const parseTranslateRequest = async (request: Request) => {
   const body = (await request.json()) as Partial<TranslateRequestBody>
-  const text = typeof body.text === "string" ? body.text.trim() : ""
-  const targetLanguage =
-    typeof body.targetLanguage === "string" ? body.targetLanguage.trim() : ""
-
-  return {
-    text,
-    targetLanguage
-  }
+  return normalizeTranslateInput(body.text, body.targetLanguage, body.model)
 }
 
 const normalizeTranslateInput = (
   text: unknown,
-  targetLanguage: unknown
+  targetLanguage: unknown,
+  model?: unknown
 ) => {
   const normalizedText = typeof text === "string" ? text.trim() : ""
   const normalizedTargetLanguage =
     typeof targetLanguage === "string" ? targetLanguage.trim() : ""
+  const normalizedModel: TranslateModel =
+    model === "anthropic" ? "anthropic" : "openai"
 
   return {
     text: normalizedText,
-    targetLanguage: normalizedTargetLanguage
+    targetLanguage: normalizedTargetLanguage,
+    model: normalizedModel
   }
 }
 
@@ -85,6 +84,7 @@ const parseTranslateWsMessage = (
       requestId: string
       text: string
       targetLanguage: string
+      model: TranslateModel
     } => {
   if (!rawMessage || typeof rawMessage !== "object") {
     return {
@@ -108,7 +108,8 @@ const parseTranslateWsMessage = (
 
   const { text, targetLanguage } = normalizeTranslateInput(
     message.text,
-    message.targetLanguage
+    message.targetLanguage,
+    message.model
   )
 
   if (!text) {
@@ -126,7 +127,8 @@ const parseTranslateWsMessage = (
   return {
     requestId: message.requestId.trim(),
     text,
-    targetLanguage
+    targetLanguage,
+    model: message.model === "anthropic" ? "anthropic" : "openai"
   }
 }
 
@@ -139,6 +141,19 @@ const parseWsJsonMessage = (message: string | Uint8Array | Buffer) => {
 
 export const createApiServer = () => {
   const anthropicTranslator = AnthropicTranslator()
+  const openAiTranslator = OpenAiTranslator()
+  const translateWithModel = async (
+    model: TranslateModel,
+    text: string,
+    targetLanguage: string
+  ) => {
+    if (model === "anthropic") {
+      return anthropicTranslator.translate(text, targetLanguage)
+    }
+
+    return openAiTranslator.translate(text, targetLanguage)
+  }
+
   const server = Bun.serve({
     port: 5001,
     async fetch(request, serverInstance) {
@@ -167,7 +182,7 @@ export const createApiServer = () => {
 
       if (url.pathname === "/api/translate" && request.method === "POST") {
         try {
-          const { text, targetLanguage } = await parseTranslateRequest(request)
+          const { text, targetLanguage, model } = await parseTranslateRequest(request)
 
           if (!text) {
             return createJsonResponse(
@@ -188,7 +203,8 @@ export const createApiServer = () => {
             )
           }
 
-          const translatedOutput = await anthropicTranslator.translate(
+          const translatedOutput = await translateWithModel(
+            model || "openai",
             text,
             targetLanguage
           )
@@ -245,7 +261,8 @@ export const createApiServer = () => {
         }
 
         try {
-          const translatedOutput = await anthropicTranslator.translate(
+          const translatedOutput = await translateWithModel(
+            parsedMessage.model,
             parsedMessage.text,
             parsedMessage.targetLanguage
           )

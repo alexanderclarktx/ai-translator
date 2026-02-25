@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
-import type { TranslateWsRequestMessage, TranslateWsServerMessage } from "@template/core"
+import type {
+  TranslateModel,
+  TranslateWsRequestMessage,
+  TranslateWsServerMessage
+} from "@template/core"
 import type { LanguageOption } from "./components/LanguagePicker"
+import { ModelSwitch } from "./components/ModelSwitch"
 import { TextPane } from "./components/TextPane"
 import { TranslateToolbar } from "./components/TranslateToolbar"
 
@@ -31,8 +36,10 @@ const App = () => {
   const [debouncedRequest, setDebouncedRequest] = useState<{
     text: string
     targetLanguage: string
+    model: TranslateModel
   } | null>(null)
   const [targetLanguage, setTargetLanguage] = useState(languageOptions[1].value)
+  const [selectedModel, setSelectedModel] = useState<TranslateModel>("openai")
   const socketRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutIdRef = useRef<number | null>(null)
   const requestCounterRef = useRef(0)
@@ -42,6 +49,7 @@ const App = () => {
   const sendTranslateRequest = (requestInput: {
     text: string
     targetLanguage: string
+    model: TranslateModel
   }) => {
     const socket = socketRef.current
 
@@ -60,13 +68,15 @@ const App = () => {
     setErrorText("")
     setIsTranslating(true)
     latestRequestIdRef.current = requestId
-    lastRequestedSignatureRef.current = `${requestInput.text}::${requestInput.targetLanguage}`
+    lastRequestedSignatureRef.current =
+      `${requestInput.model}::${requestInput.text}::${requestInput.targetLanguage}`
 
     const request: TranslateWsRequestMessage = {
       type: "translate.request",
       requestId,
       text: requestInput.text,
-      targetLanguage: requestInput.targetLanguage
+      targetLanguage: requestInput.targetLanguage,
+      model: requestInput.model
     }
 
     console.log("Sending translate request", request)
@@ -200,21 +210,23 @@ const App = () => {
     const timeoutId = window.setTimeout(() => {
       setDebouncedRequest({
         text: trimmedText,
-        targetLanguage
+        targetLanguage,
+        model: selectedModel
       })
     }, 400)
 
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [inputText, targetLanguage])
+  }, [inputText, targetLanguage, selectedModel])
 
   useEffect(() => {
     if (!debouncedRequest || !isSocketOpen || isTranslating) {
       return
     }
 
-    const nextSignature = `${debouncedRequest.text}::${debouncedRequest.targetLanguage}`
+    const nextSignature =
+      `${debouncedRequest.model}::${debouncedRequest.text}::${debouncedRequest.targetLanguage}`
 
     if (lastRequestedSignatureRef.current === nextSignature) {
       return
@@ -274,6 +286,14 @@ const App = () => {
           <span className="spinner pane-stack-spinner" aria-hidden="true" />
         ) : null}
       </section>
+
+      <div className="pane-switch-row" aria-label="Model selection">
+        <ModelSwitch
+          className="output-pane-model-switch"
+          selectedModel={selectedModel}
+          onModelToggle={setSelectedModel}
+        />
+      </div>
     </main>
   )
 }

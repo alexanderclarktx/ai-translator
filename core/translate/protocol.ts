@@ -1,8 +1,11 @@
+type TranslateModel = "openai" | "anthropic"
+
 type TranslateWsRequestMessage = {
   type: "translate.request"
   requestId: string
   text: string
   targetLanguage: string
+  model?: TranslateModel
 }
 
 type TranslateWsReadyMessage = {
@@ -30,6 +33,7 @@ type TranslateWsServerMessage =
   | TranslateWsErrorMessage
 
 export type {
+  TranslateModel,
   TranslateWsClientMessage,
   TranslateWsErrorMessage,
   TranslateWsRequestMessage,

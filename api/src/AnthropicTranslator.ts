@@ -106,7 +106,7 @@ const createTranslate =
       },
       body: JSON.stringify({
         model,
-        max_tokens: 64,
+        max_tokens: 256,
         system:
           "You are a translation engine. Translate accurately and preserve meaning, tone, and formatting where possible. Return valid JSON matching the schema.",
         messages: [
