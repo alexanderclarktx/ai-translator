@@ -1,7 +1,5 @@
 import {
-  formatUptime,
-  type TranslateWsClientMessage,
-  type TranslateWsServerMessage
+  formatUptime, TranslateWsClientMessage, TranslateWsServerMessage
 } from "@template/core"
 import { AnthropicTranslator } from "./AnthropicTranslator"
 
