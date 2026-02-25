@@ -1,9 +1,12 @@
+import type { ReactNode } from "react"
+
 type TextPaneProps = {
   id: string
   title: string
   placeholder: string
   ariaLabel: string
   value: string
+  footer?: ReactNode
   readOnly?: boolean
   autoFocus?: boolean
   onChange?: (value: string) => void
@@ -11,7 +14,16 @@ type TextPaneProps = {
 }
 
 const TextPane = ({
-  id, title, placeholder, ariaLabel, value, readOnly = false, autoFocus = false, onChange, showHeader = true
+  id,
+  title,
+  placeholder,
+  ariaLabel,
+  value,
+  footer,
+  readOnly = false,
+  autoFocus = false,
+  onChange,
+  showHeader = true
 }: TextPaneProps) => {
   return (
     <section
@@ -34,6 +46,8 @@ const TextPane = ({
         autoFocus={autoFocus}
         onChange={(event) => onChange?.(event.target.value)}
       />
+
+      {footer ? <div className="pane-footer">{footer}</div> : null}
     </section>
   )
 }

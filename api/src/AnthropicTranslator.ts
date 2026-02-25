@@ -12,10 +12,14 @@ type AnthropicMessageResponse = {
 
 type TranslationStructuredOutput = {
   translation: string
+  transliteration: string
 }
 
 export type AnthropicTranslator = {
-  translate: (text: string, targetLanguage: string) => Promise<string>
+  translate: (
+    text: string,
+    targetLanguage: string
+  ) => Promise<TranslationStructuredOutput>
 }
 
 const translationOutputSchema = {
@@ -24,9 +28,14 @@ const translationOutputSchema = {
     translation: {
       type: "string",
       description: "The translated text only, with no explanation"
+    },
+    transliteration: {
+      type: "string",
+      description:
+        "Pronunciation of the translated text written in the source input alphabet/script"
     }
   },
-  required: ["translation"],
+  required: ["translation", "transliteration"],
   additionalProperties: false
 } as const
 
@@ -56,13 +65,25 @@ const parseStructuredTranslation = (content?: AnthropicMessageContentBlock[]) =>
     typeof parsed.translation === "string"
       ? parsed.translation.trim()
       : ""
+  const transliteration =
+    parsed &&
+    typeof parsed === "object" &&
+    "transliteration" in parsed &&
+    typeof parsed.transliteration === "string"
+      ? parsed.transliteration.trim()
+      : ""
 
   if (!translation) {
     throw new Error("Anthropic structured response missing 'translation'")
   }
 
+  if (!transliteration) {
+    throw new Error("Anthropic structured response missing 'transliteration'")
+  }
+
   return {
-    translation
+    translation,
+    transliteration
   } satisfies TranslationStructuredOutput
 }
 
@@ -86,11 +107,14 @@ const createTranslate =
         model,
         max_tokens: 64,
         system:
-          "You are a translation engine. Translate accurately and preserve meaning, tone, and formatting where possible.",
+          "You are a translation engine. Translate accurately and preserve meaning, tone, and formatting where possible. Return valid JSON matching the schema.",
         messages: [
           {
             role: "user",
-            content: `Translate the following text to ${targetLanguage}:\n\n${text}`
+            content:
+              `Translate the following text to ${targetLanguage}.\n` +
+              "Also provide a transliteration: the pronunciation of the translated output written using the input text's alphabet/script.\n\n" +
+              text
           }
         ],
         output_config: {
@@ -108,13 +132,13 @@ const createTranslate =
       throw new Error(data.error?.message || "Anthropic request failed")
     }
 
-    const translatedText = parseStructuredTranslation(data.content).translation
+    const structuredTranslation = parseStructuredTranslation(data.content)
 
-    if (!translatedText) {
+    if (!structuredTranslation.translation) {
       throw new Error("Anthropic returned an empty translation")
     }
 
-    return translatedText
+    return structuredTranslation
   }
 
 export const AnthropicTranslator = (): AnthropicTranslator => {

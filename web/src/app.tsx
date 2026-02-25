@@ -24,6 +24,7 @@ const getTranslateWsUrl = () => {
 const App = () => {
   const [inputText, setInputText] = useState("")
   const [outputText, setOutputText] = useState("")
+  const [outputTransliteration, setOutputTransliteration] = useState("")
   const [errorText, setErrorText] = useState("")
   const [isTranslating, setIsTranslating] = useState(false)
   const [isSocketOpen, setIsSocketOpen] = useState(false)
@@ -132,6 +133,7 @@ const App = () => {
 
         if (message.type === "translate.success") {
           setOutputText(message.text)
+          setOutputTransliteration(message.transliteration)
           setErrorText("")
           return
         }
@@ -188,6 +190,7 @@ const App = () => {
 
     if (!trimmedText) {
       setOutputText("")
+      setOutputTransliteration("")
       setErrorText("")
       setDebouncedRequest(null)
       lastRequestedSignatureRef.current = ""
@@ -259,6 +262,11 @@ const App = () => {
           placeholder="translation"
           ariaLabel="Translated text"
           value={outputText}
+          footer={
+            outputTransliteration ? (
+              <p className="transliteration-text">{outputTransliteration}</p>
+            ) : null
+          }
           readOnly
         />
 

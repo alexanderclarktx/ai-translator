@@ -13,6 +13,7 @@ type TranslateWsSuccessMessage = {
   type: "translate.success"
   requestId: string
   text: string
+  transliteration: string
 }
 
 type TranslateWsErrorMessage = {

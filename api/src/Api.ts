@@ -188,13 +188,14 @@ export const createApiServer = () => {
             )
           }
 
-          const translatedText = await anthropicTranslator.translate(
+          const translatedOutput = await anthropicTranslator.translate(
             text,
             targetLanguage
           )
 
           return createJsonResponse({
-            text: translatedText
+            text: translatedOutput.translation,
+            transliteration: translatedOutput.transliteration
           })
         } catch (error) {
           logServerError(`${request.method} ${url.pathname}`, error)
@@ -244,7 +245,7 @@ export const createApiServer = () => {
         }
 
         try {
-          const translatedText = await anthropicTranslator.translate(
+          const translatedOutput = await anthropicTranslator.translate(
             parsedMessage.text,
             parsedMessage.targetLanguage
           )
@@ -252,7 +253,8 @@ export const createApiServer = () => {
           sendWsMessage(ws, {
             type: "translate.success",
             requestId: parsedMessage.requestId,
-            text: translatedText
+            text: translatedOutput.translation,
+            transliteration: translatedOutput.transliteration
           })
         } catch (error) {
           logServerError(`WS translate ${parsedMessage.requestId}`, error)
