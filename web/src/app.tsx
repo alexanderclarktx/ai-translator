@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 import type { LanguageOption } from "./components/LanguagePicker"
 import { TextPane } from "./components/TextPane"
@@ -38,6 +38,7 @@ const App = () => {
   const [targetLanguage, setTargetLanguage] = useState(
     languageOptions[1]?.value || "Chinese (simplified)"
   )
+  const lastRequestedSignatureRef = useRef("")
 
   const handleTranslate = async (nextTargetLanguage = targetLanguage) => {
     const trimmedText = inputText.trim()
@@ -48,6 +49,7 @@ const App = () => {
 
     setErrorText("")
     setIsTranslating(true)
+    lastRequestedSignatureRef.current = `${trimmedText}::${nextTargetLanguage}`
 
     try {
       const response = await fetch(getTranslateApiUrl(), {
@@ -77,6 +79,31 @@ const App = () => {
     }
   }
 
+  useEffect(() => {
+    const trimmedText = inputText.trim()
+
+    if (!trimmedText) {
+      setOutputText("")
+      setErrorText("")
+      lastRequestedSignatureRef.current = ""
+      return
+    }
+
+    const nextSignature = `${trimmedText}::${targetLanguage}`
+
+    if (isTranslating || lastRequestedSignatureRef.current === nextSignature) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void handleTranslate()
+    }, 450)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [inputText, targetLanguage, isTranslating])
+
   return (
     <main>
       <header>
@@ -85,16 +112,10 @@ const App = () => {
 
       <TranslateToolbar
         errorText={errorText}
-        inputText={inputText}
-        isTranslating={isTranslating}
         languageOptions={languageOptions}
         targetLanguage={targetLanguage}
         onLanguageSelect={(language) => {
           setTargetLanguage(language)
-          void handleTranslate(language)
-        }}
-        onTranslate={() => {
-          void handleTranslate()
         }}
       />
 
@@ -116,6 +137,10 @@ const App = () => {
           value={outputText}
           readOnly
         />
+
+        {isTranslating ? (
+          <span className="spinner pane-stack-spinner" aria-hidden="true" />
+        ) : null}
       </section>
     </main>
   )

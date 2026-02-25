@@ -16,8 +16,6 @@ const LanguagePicker = ({
 }: LanguagePickerProps) => {
   return (
     <div className="language-picker" role="group" aria-label="Target language">
-      <p className="language-picker-label">Target language</p>
-
       <div className="language-bubbles">
         {options.map((option) => {
           const isSelected = option.value === targetLanguage

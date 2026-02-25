@@ -51,6 +51,7 @@ main {
 .language-bubbles {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.45rem;
 }
 
@@ -135,6 +136,7 @@ main {
   width: 100%;
   max-width: 600px;
   margin-inline: auto;
+  position: relative;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(16, 24, 32, 0.12);
   border-radius: 10px;
@@ -154,6 +156,15 @@ main {
 .pane-stack .pane-textarea {
   min-height: 0;
   resize: none;
+}
+
+.pane-stack-spinner {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 1;
+  border-color: rgba(0, 0, 0, 0.2);
+  border-top-color: #000000;
 }
 
 .pane {
