@@ -24,9 +24,9 @@ const ModelSwitch = ({
         onModelToggle(useOpenAi ? "anthropic" : "openai")
       }}
     >
-      <span className="model-switch-track" aria-hidden="true">
+      {/* <span className="model-switch-track" aria-hidden="true">
         <span className="model-switch-thumb" />
-      </span>
+      </span> */}
       <span className="model-switch-text">
         {useOpenAi ? "OpenAI" : "Anthropic"}
       </span>
