@@ -246,6 +246,7 @@ const App = () => {
           placeholder=""
           ariaLabel="Text to translate"
           value={inputText}
+          autoFocus
           onChange={setInputText}
         />
 

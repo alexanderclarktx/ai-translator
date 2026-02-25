@@ -5,12 +5,13 @@ type TextPaneProps = {
   ariaLabel: string
   value: string
   readOnly?: boolean
+  autoFocus?: boolean
   onChange?: (value: string) => void
   showHeader?: boolean
 }
 
 const TextPane = ({
-  id, title, placeholder, ariaLabel, value, readOnly = false, onChange, showHeader = true
+  id, title, placeholder, ariaLabel, value, readOnly = false, autoFocus = false, onChange, showHeader = true
 }: TextPaneProps) => {
   return (
     <section
@@ -30,6 +31,7 @@ const TextPane = ({
         aria-label={ariaLabel}
         value={value}
         readOnly={readOnly}
+        autoFocus={autoFocus}
         onChange={(event) => onChange?.(event.target.value)}
       />
     </section>
