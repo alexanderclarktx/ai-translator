@@ -1,14 +1,12 @@
 import { useState } from "react"
 import { createRoot } from "react-dom/client"
+import type { LanguageOption } from "./components/LanguagePicker"
+import { TextPane } from "./components/TextPane"
+import { TranslateToolbar } from "./components/TranslateToolbar"
 
 type TranslateResponse = {
   text?: string
   error?: string
-}
-
-type LanguageOption = {
-  label: string
-  value: string
 }
 
 const languageOptions: LanguageOption[] = [
@@ -85,89 +83,39 @@ const App = () => {
         <h1>AI Translator</h1>
       </header>
 
-      <section className="toolbar" aria-label="Translation controls">
-        <div className="language-picker" role="group" aria-label="Target language">
-          <p className="language-picker-label">Target language</p>
-          <div className="language-bubbles">
-            {languageOptions.map((option) => {
-              const isSelected = option.value === targetLanguage
-
-              return (
-                <button
-                  key={option.label}
-                  className="language-bubble"
-                  data-selected={isSelected ? "true" : "false"}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => {
-                    if (isSelected) {
-                      return
-                    }
-
-                    setTargetLanguage(option.value)
-                    void handleTranslate(option.value)
-                  }}
-                >
-                  {option.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <button
-          className="translate-button"
-          type="button"
-          onClick={() => {
-            void handleTranslate()
-          }}
-          disabled={isTranslating || !inputText.trim()}
-        >
-          {isTranslating ? (
-            <>
-              <span className="spinner" aria-hidden="true" />
-              Translating...
-            </>
-          ) : (
-            "Translate"
-          )}
-        </button>
-
-        {errorText ? (
-          <p className="status-text status-text-error" role="status">
-            {errorText}
-          </p>
-        ) : null}
-      </section>
+      <TranslateToolbar
+        errorText={errorText}
+        inputText={inputText}
+        isTranslating={isTranslating}
+        languageOptions={languageOptions}
+        targetLanguage={targetLanguage}
+        onLanguageSelect={(language) => {
+          setTargetLanguage(language)
+          void handleTranslate(language)
+        }}
+        onTranslate={() => {
+          void handleTranslate()
+        }}
+      />
 
       <section className="pane-grid" aria-label="Translator workspace">
-        <section className="pane" aria-labelledby="input-pane-title">
-          <div className="pane-header">
-            <h2 id="input-pane-title">Input</h2>
-          </div>
+        <TextPane
+          id="input-pane-title"
+          title="Input"
+          placeholder="Type or paste text to translate"
+          ariaLabel="Text to translate"
+          value={inputText}
+          onChange={setInputText}
+        />
 
-          <textarea
-            className="pane-textarea"
-            placeholder="Type or paste text to translate"
-            aria-label="Text to translate"
-            value={inputText}
-            onChange={(event) => setInputText(event.target.value)}
-          />
-        </section>
-
-        <section className="pane" aria-labelledby="output-pane-title">
-          <div className="pane-header">
-            <h2 id="output-pane-title">Translated Output</h2>
-          </div>
-
-          <textarea
-            className="pane-textarea"
-            placeholder="Translation will appear here"
-            aria-label="Translated text"
-            value={outputText}
-            readOnly
-          />
-        </section>
+        <TextPane
+          id="output-pane-title"
+          title="Translated Output"
+          placeholder="Translation will appear here"
+          ariaLabel="Translated text"
+          value={outputText}
+          readOnly
+        />
       </section>
     </main>
   )
