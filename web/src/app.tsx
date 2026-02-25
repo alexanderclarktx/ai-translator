@@ -10,9 +10,9 @@ const languageOptions: LanguageOption[] = [
   { label: "Chinese", value: "Chinese (simplified)" },
   { label: "French", value: "French" },
   { label: "Spanish", value: "Spanish" },
-  { label: "Italian", value: "Italian" },
+  // { label: "Italian", value: "Italian" },
   { label: "Japanese", value: "Japanese" },
-  { label: "Korean", value: "Korean" },
+  // { label: "Korean", value: "Korean" },
   { label: "Russian", value: "Russian" }
 ]
 

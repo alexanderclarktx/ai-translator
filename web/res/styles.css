@@ -1,5 +1,6 @@
 :root {
   font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 17px;
   background-color: #fff9df;
   color: #1c2024;
 }
@@ -77,12 +78,15 @@ main {
   font: inherit;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease,
-    box-shadow 120ms ease;
+  transition: background-color 180ms ease-out, border-color 180ms ease-out,
+    box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .language-bubble:hover {
   background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 24, 32, 0.1);
 }
 
 .language-bubble[data-selected="true"] {
@@ -111,10 +115,20 @@ main {
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 6px 14px rgba(14, 111, 215, 0.28);
+  transition: background-color 180ms ease-out,
+    box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .translate-button:hover:not(:disabled) {
   background: #0a62c0;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(14, 111, 215, 0.3);
+}
+
+.translate-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(14, 111, 215, 0.22);
 }
 
 .translate-button:disabled {
@@ -228,6 +242,13 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation: none;
+  }
+
+  .language-bubble,
+  .translate-button {
+    transition: background-color 120ms linear, border-color 120ms linear,
+      box-shadow 120ms linear;
+    transform: none;
   }
 }
 
