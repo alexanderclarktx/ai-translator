@@ -1,4 +1,4 @@
-import { ReactNode, useLayoutEffect, useRef } from "react"
+import { MutableRefObject, ReactNode, useLayoutEffect, useRef } from "react"
 
 type TextPaneProps = {
   id: string
@@ -13,16 +13,17 @@ type TextPaneProps = {
   autoFocus: boolean
   onChange?: (value: string) => void
   showHeader: boolean
+  textareaRef?: MutableRefObject<HTMLTextAreaElement | null>
 }
 
 const TextPane = ({
-  id, title, placeholder, ariaLabel, value, className, afterTextarea, footer, readOnly, autoFocus, onChange, showHeader
+  id, title, placeholder, ariaLabel, value, className, afterTextarea, footer, readOnly, autoFocus, onChange, showHeader, textareaRef
 }: TextPaneProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const localTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ")
 
   useLayoutEffect(() => {
-    const textarea = textareaRef.current
+    const textarea = localTextareaRef.current
 
     if (!textarea) {
       return
@@ -45,7 +46,13 @@ const TextPane = ({
       ) : null}
 
       <textarea
-        ref={textareaRef}
+        ref={(node) => {
+          localTextareaRef.current = node
+
+          if (textareaRef) {
+            textareaRef.current = node
+          }
+        }}
         className="pane-textarea"
         rows={1}
         placeholder={placeholder}

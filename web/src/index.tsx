@@ -21,6 +21,22 @@ const getTranslateWsUrl = () => {
 
 const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim()
 
+const isEditableElement = (element: Element | null) => {
+  if (!(element instanceof HTMLElement)) {
+    return false
+  }
+
+  if (element instanceof HTMLTextAreaElement) {
+    return !element.readOnly && !element.disabled
+  }
+
+  if (element instanceof HTMLInputElement) {
+    return !element.readOnly && !element.disabled
+  }
+
+  return element.isContentEditable
+}
+
 const getRequestSignature = ({
   text,
   targetLanguage,
@@ -54,6 +70,8 @@ const App = () => {
   const [targetLanguage, setTargetLanguage] = useState(languageOptions[1].value)
   const [selectedModel, setSelectedModel] = useState<TranslateModel>("openai")
   const socketRef = useRef<WebSocket | null>(null)
+  const inputTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const pendingInputSelectionRef = useRef<{ start: number, end: number } | null>(null)
   const reconnectTimeoutIdRef = useRef<number | null>(null)
   const requestCounterRef = useRef(0)
   const latestRequestRef = useRef({
@@ -230,6 +248,64 @@ const App = () => {
     }
   }, [])
 
+  useEffect(() => {
+    const textarea = inputTextareaRef.current
+    const pendingSelection = pendingInputSelectionRef.current
+
+    if (!textarea || !pendingSelection) {
+      return
+    }
+
+    pendingInputSelectionRef.current = null
+    textarea.setSelectionRange(pendingSelection.start, pendingSelection.end)
+  }, [inputText])
+
+  useEffect(() => {
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      const textarea = inputTextareaRef.current
+      if (!textarea) return
+
+      textarea.focus()
+
+      if (
+        event.defaultPrevented || event.isComposing || event.ctrlKey || event.altKey || event.metaKey
+      ) return
+
+      const activeElement = document.activeElement
+
+      if (activeElement === textarea) return
+
+      if (isEditableElement(activeElement)) return
+
+      event.preventDefault()
+
+      const selectionStart = textarea.selectionStart ?? textarea.value.length
+      const selectionEnd = textarea.selectionEnd ?? textarea.value.length
+      const isBackspaceKey = event.key === "Backspace"
+      const deleteStart =
+        isBackspaceKey && selectionStart === selectionEnd
+          ? Math.max(0, selectionStart - 1)
+          : selectionStart
+      const deleteEnd = selectionEnd
+      const insertedText = isBackspaceKey ? "" : event.key
+      const nextValue =
+        `${textarea.value.slice(0, deleteStart)}${insertedText}${textarea.value.slice(deleteEnd)}`
+      const nextCursorPosition = deleteStart + insertedText.length
+
+      pendingInputSelectionRef.current = {
+        start: nextCursorPosition,
+        end: nextCursorPosition
+      }
+      setInputText(nextValue)
+    }
+
+    window.addEventListener("keydown", handleWindowKeyDown)
+
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown)
+    }
+  }, [])
+
   // if input changes
   useEffect(() => {
     const trimmedText = inputText.trim()
@@ -323,6 +399,7 @@ const App = () => {
           ariaLabel="Text to translate"
           value={inputText}
           autoFocus
+          textareaRef={inputTextareaRef}
           onChange={setInputText}
           readOnly={false}
         />
