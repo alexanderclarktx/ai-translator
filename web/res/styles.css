@@ -5,6 +5,10 @@
   color: #1c2024;
 }
 
+::selection {
+  background: rgba(0, 0, 0, 0.14);
+}
+
 body {
   margin: 0;
   padding: 2rem;
@@ -242,8 +246,8 @@ main {
 }
 
 .spinner {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.6rem;
+  height: 0.6rem;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.35);
   border-top-color: #ffffff;
