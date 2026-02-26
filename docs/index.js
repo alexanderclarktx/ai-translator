@@ -17482,8 +17482,7 @@ var App = () => {
         }, 500);
       });
     };
-    if (window.location.hostname === "localhost")
-      connectSocket();
+    connectSocket();
     return () => {
       isDisposed = true;
       clearReconnectTimeout();
