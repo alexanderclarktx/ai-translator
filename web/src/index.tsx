@@ -19,6 +19,19 @@ const getTranslateWsUrl = () => {
   return `http://${hostname}:5001/api/ws`
 }
 
+const getRequestSignature = ({
+  text,
+  targetLanguage,
+  model
+}: {
+  text: string
+  targetLanguage: string
+  model: TranslateModel
+}) => {
+  const normalizedText = text.replace(/\s+/g, " ").trim()
+  return `${model}::${normalizedText}::${targetLanguage}`
+}
+
 const App = () => {
   const [inputText, setInputText] = useState("")
   const [outputText, setOutputText] = useState("")
@@ -62,8 +75,7 @@ const App = () => {
     setErrorText("")
     setIsTranslating(true)
     latestRequestIdRef.current = requestId
-    lastRequestedSignatureRef.current =
-      `${requestInput.model}::${requestInput.text}::${requestInput.targetLanguage}`
+    lastRequestedSignatureRef.current = getRequestSignature(requestInput)
 
     const request: TranslateWsRequestMessage = {
       type: "translate.request",
@@ -241,8 +253,7 @@ const App = () => {
       return
     }
 
-    const nextSignature =
-      `${debouncedRequest.model}::${debouncedRequest.text}::${debouncedRequest.targetLanguage}`
+    const nextSignature = getRequestSignature(debouncedRequest)
 
     if (lastRequestedSignatureRef.current === nextSignature) {
       return
