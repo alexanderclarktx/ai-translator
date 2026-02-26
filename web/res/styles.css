@@ -240,7 +240,8 @@ main {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
+  box-sizing: border-box;
+  width: calc(100vw - 4rem);
   max-width: 600px;
   position: fixed;
   left: 50%;
@@ -276,6 +277,7 @@ main {
   border-radius: 10px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .pane-no-header {
@@ -316,6 +318,7 @@ main {
   border-top: 1px solid rgba(16, 24, 32, 0.08);
   background: rgba(255, 255, 255, 0.18);
   padding: 0.65rem 1rem 0.75rem;
+  min-width: 0;
 }
 
 .transliteration-text {
@@ -323,6 +326,11 @@ main {
   color: #6b7280;
   font-size: 0.92rem;
   line-height: 1.35;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: center;
 }
 
 .pane-switch-row {
