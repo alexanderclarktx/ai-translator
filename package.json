@@ -8,7 +8,9 @@
     "dev": "bun --cwd api dev & bun --cwd web dev",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "wip": "git add . && git commit -m 'wip' && git push",
-    "w": "bun wip"
+    "w": "bun wip",
+    "ship": "bun --cwd web build && rm -rf docs/* && cp -r web/res/* docs/ && git add . && git commit -m 'ship' && git push",
+    "s": "bun ship"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

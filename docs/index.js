@@ -17102,11 +17102,7 @@ var require_client = __commonJS((exports, module) => {
 
 // src/components/LanguagePicker.tsx
 var jsx_dev_runtime = __toESM(require_jsx_dev_runtime(), 1);
-var LanguagePicker = ({
-  options,
-  targetLanguage,
-  onSelect
-}) => {
+var LanguagePicker = ({ options, targetLanguage, onSelect }) => {
   return /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
     className: "language-picker",
     role: "group",
@@ -17121,9 +17117,8 @@ var LanguagePicker = ({
           type: "button",
           "aria-pressed": isSelected,
           onClick: () => {
-            if (isSelected) {
+            if (isSelected)
               return;
-            }
             onSelect(option.value);
           },
           children: option.label
@@ -17143,10 +17138,10 @@ var TextPane = ({
   ariaLabel,
   value,
   footer,
-  readOnly = false,
-  autoFocus = false,
+  readOnly,
+  autoFocus,
   onChange,
-  showHeader = true
+  showHeader
 }) => {
   return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("section", {
     className: showHeader ? "pane" : "pane pane-no-header",
@@ -17201,7 +17196,7 @@ var TranslateToolbar = ({
     ]
   }, undefined, true, undefined, this);
 };
-// src/app.tsx
+// src/index.tsx
 var import_react = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
 var jsx_dev_runtime5 = __toESM(require_jsx_dev_runtime(), 1);
@@ -17419,7 +17414,8 @@ var App = () => {
             ariaLabel: "Text to translate",
             value: inputText,
             autoFocus: true,
-            onChange: setInputText
+            onChange: setInputText,
+            readOnly: false
           }, undefined, false, undefined, this),
           /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
             "aria-hidden": "true",
@@ -17432,6 +17428,7 @@ var App = () => {
             placeholder: "translation",
             ariaLabel: "Translated text",
             value: outputText,
+            autoFocus: false,
             footer: outputTransliteration ? /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("p", {
               className: "transliteration-text",
               children: outputTransliteration
