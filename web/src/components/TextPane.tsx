@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { ReactNode } from "react"
 
 type TextPaneProps = {
   id: string

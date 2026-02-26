@@ -1,4 +1,4 @@
-import type { TranslateModel } from "@template/core"
+import { TranslateModel } from "@template/core"
 
 type ModelSwitchProps = {
   selectedModel: TranslateModel

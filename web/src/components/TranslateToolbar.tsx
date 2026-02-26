@@ -1,5 +1,4 @@
-import type { LanguageOption } from "./LanguagePicker"
-import { LanguagePicker } from "./LanguagePicker"
+import { LanguageOption, LanguagePicker } from "@template/web"
 
 type TranslateToolbarProps = {
   errorText: string

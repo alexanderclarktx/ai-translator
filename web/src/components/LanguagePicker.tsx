@@ -9,11 +9,7 @@ type LanguagePickerProps = {
   onSelect: (language: string) => void
 }
 
-const LanguagePicker = ({
-  options,
-  targetLanguage,
-  onSelect
-}: LanguagePickerProps) => {
+const LanguagePicker = ({ options, targetLanguage, onSelect }: LanguagePickerProps) => {
   return (
     <div className="language-picker" role="group" aria-label="Target language">
       <div className="language-bubbles">
@@ -28,10 +24,7 @@ const LanguagePicker = ({
               type="button"
               aria-pressed={isSelected}
               onClick={() => {
-                if (isSelected) {
-                  return
-                }
-
+                if (isSelected) return
                 onSelect(option.value)
               }}
             >

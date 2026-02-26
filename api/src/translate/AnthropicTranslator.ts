@@ -1,4 +1,4 @@
-import type { Translator } from "./Translator"
+import { Translator } from "./Translator"
 
 type AnthropicMessageContentBlock = {
   type: string
