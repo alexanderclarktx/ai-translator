@@ -1,5 +1,41 @@
 import { useEffect, useRef, useState } from "react"
 
+const transliterationAnimationMinIntervalMs = 16
+const transliterationAnimationMaxIntervalMs = 55
+const transliterationAnimationFastThreshold = 28
+
+const getSharedPrefixLength = (left: string, right: string) => {
+  const maxLength = Math.min(left.length, right.length)
+  let index = 0
+
+  while (index < maxLength && left[index] === right[index]) {
+    index += 1
+  }
+
+  return index
+}
+
+const getAnimationWorkLeft = (currentText: string, desiredText: string) => {
+  const sharedPrefixLength = getSharedPrefixLength(currentText, desiredText)
+  const deleteSteps = currentText.length - sharedPrefixLength
+  const addSteps = desiredText.length - sharedPrefixLength
+
+  return deleteSteps + addSteps
+}
+
+const getDynamicIntervalDuration = (currentText: string, desiredText: string) => {
+  const workLeft = getAnimationWorkLeft(currentText, desiredText)
+
+  if (workLeft <= 1) {
+    return transliterationAnimationMaxIntervalMs
+  }
+
+  const clampedProgress = Math.min((workLeft - 1) / (transliterationAnimationFastThreshold - 1), 1)
+  const intervalRange = transliterationAnimationMaxIntervalMs - transliterationAnimationMinIntervalMs
+
+  return Math.round(transliterationAnimationMaxIntervalMs - (intervalRange * clampedProgress))
+}
+
 type TransliterationProps = {
   value: string
   isVisible: boolean
@@ -28,6 +64,10 @@ const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) =
   }, [desiredText])
 
   useEffect(() => {
+    if (text === desiredText) {
+      return
+    }
+
     const intervalId = window.setInterval(() => {
       setText((currentText) => {
         const nextDesiredText = desiredTextRef.current
@@ -44,12 +84,12 @@ const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) =
 
         return nextDesiredText.slice(0, currentText.length + 1)
       })
-    }, 30)
+    }, getDynamicIntervalDuration(text, desiredText))
 
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [])
+  }, [desiredText, text])
 
   return (
     <button

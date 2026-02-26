@@ -1,5 +1,41 @@
 import { MutableRefObject, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
 
+const textPaneAnimationMinIntervalMs = 35
+const textPaneAnimationMaxIntervalMs = 110
+const textPaneAnimationFastThreshold = 24
+
+const getSharedPrefixLength = (left: string, right: string) => {
+  const maxLength = Math.min(left.length, right.length)
+  let index = 0
+
+  while (index < maxLength && left[index] === right[index]) {
+    index += 1
+  }
+
+  return index
+}
+
+const getAnimationWorkLeft = (currentText: string, desiredText: string) => {
+  const sharedPrefixLength = getSharedPrefixLength(currentText, desiredText)
+  const deleteSteps = currentText.length - sharedPrefixLength
+  const addSteps = desiredText.length - sharedPrefixLength
+
+  return deleteSteps + addSteps
+}
+
+const getDynamicIntervalDuration = (currentText: string, desiredText: string) => {
+  const workLeft = getAnimationWorkLeft(currentText, desiredText)
+
+  if (workLeft <= 1) {
+    return textPaneAnimationMaxIntervalMs
+  }
+
+  const clampedProgress = Math.min((workLeft - 1) / (textPaneAnimationFastThreshold - 1), 1)
+  const intervalRange = textPaneAnimationMaxIntervalMs - textPaneAnimationMinIntervalMs
+
+  return Math.round(textPaneAnimationMaxIntervalMs - (intervalRange * clampedProgress))
+}
+
 type TextPaneProps = {
   id: string
   title: string
@@ -44,6 +80,10 @@ const TextPane = ({
   }, [desiredText])
 
   useEffect(() => {
+    if (text === desiredText) {
+      return
+    }
+
     const intervalId = window.setInterval(() => {
       setText((currentText) => {
         const nextDesiredText = desiredTextRef.current
@@ -60,12 +100,12 @@ const TextPane = ({
 
         return nextDesiredText.slice(0, currentText.length + 1)
       })
-    }, 80)
+    }, getDynamicIntervalDuration(text, desiredText))
 
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [])
+  }, [desiredText, text])
 
   useLayoutEffect(() => {
     const textarea = localTextareaRef.current
