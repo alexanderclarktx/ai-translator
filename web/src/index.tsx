@@ -16,7 +16,7 @@ const languageOptions: LanguageOption[] = [
 
 const getTranslateWsUrl = () => {
   const { hostname } = window.location
-  return `http://${hostname}:5001/api/ws`
+  return hostname === "localhost" ? "http://localhost:5001/api/ws" : "https://piggo-translate-production.up.railway.app/api/ws"
 }
 
 const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim()

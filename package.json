@@ -6,6 +6,7 @@
     "branch": "git checkout main && git pull && git branch -D $(whoami) ; git checkout -b $(whoami)",
     "b": "bun branch",
     "dev": "bun --cwd api dev & bun --cwd web dev",
+    "docker": "docker build -f api/Dockerfile -t ai-translator-api .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "wip": "git add . && git commit -m 'wip' && git push",
     "w": "bun wip",
