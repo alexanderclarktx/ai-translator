@@ -17641,7 +17641,7 @@ var App = () => {
       /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
         className: "app-version",
         "aria-label": "App version",
-        children: "v0.1.3"
+        children: "v0.1.4"
       }, undefined, false, undefined, this)
     ]
   }, undefined, true, undefined, this);

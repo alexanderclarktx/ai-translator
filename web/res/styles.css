@@ -359,7 +359,7 @@ main {
 
 .pane-footer {
   border-top: 1px solid rgba(16, 24, 32, 0.08);
-  background: rgba(255, 255, 255, 0.18);
+  /* background: rgba(255, 255, 255, 0.18); */
   padding: 0.65rem 1rem 0.75rem;
   min-width: 0;
   transition: height 500ms ease, transform 500ms ease, background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
@@ -368,21 +368,13 @@ main {
 .transliteration-box {
   width: 100%;
   border: 0;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.2);
   color: #3c3519;
   padding: 0;
   cursor: pointer;
   border-radius: 0.5rem;
   overflow: hidden;
   transition: background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
-}
-
-.transliteration-box:hover {
-  background: rgba(50, 50, 50, 0.05);
-}
-
-.transliteration-box.is-collapsed:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
 
 .transliteration-box:disabled {
@@ -397,12 +389,14 @@ main {
 
 .transliteration-box.is-collapsed {
   padding: 0.1rem 0;
-  background: rgba(255, 255, 255, 0.2);
+}
+
+.transliteration-box:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .transliteration-collapsed-label {
   display: block;
-  color: #5f5230;
   font-size: 0.84rem;
   min-height: 0;
   max-height: 0;
