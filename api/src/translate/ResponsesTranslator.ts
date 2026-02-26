@@ -29,95 +29,8 @@ type TranslationStructuredOutput = {
   transliteration: string
 }
 
-export type ResponsesTranslator = Translator
-
-const translationOutputSchema = {
-  type: "object",
-  properties: {
-    translation: {
-      type: "string",
-      description: "The translated text only, with no explanation"
-    },
-    transliteration: {
-      type: "string",
-      description:
-        "Pronunciation of the translated text written in the source input alphabet/script"
-    }
-  },
-  required: ["translation", "transliteration"],
-  additionalProperties: false
-} as const
-
-const getStructuredJsonText = (data: OpenAiResponsesResponse) => {
-  if (typeof data.output_text === "string" && data.output_text.trim()) {
-    return data.output_text.trim()
-  }
-
-  const rawJson = data.output
-    ?.filter((item) => item.type === "message")
-    .flatMap((item) => item.content || [])
-    .filter((content) => content.type === "output_text" && typeof content.text === "string")
-    .map((content) => content.text || "")
-    .join("")
-    .trim()
-
-  if (!rawJson) {
-    throw new Error("OpenAI Responses API returned an empty structured response")
-  }
-
-  return rawJson
-}
-
-const parseStructuredTranslation = (rawJson: string) => {
-  let parsed: unknown
-
-  try {
-    parsed = JSON.parse(rawJson)
-  } catch {
-    throw new Error("OpenAI Responses API returned invalid structured JSON")
-  }
-
-  const translation =
-    parsed &&
-    typeof parsed === "object" &&
-    "translation" in parsed &&
-    typeof parsed.translation === "string"
-      ? parsed.translation.trim()
-      : ""
-  const transliteration =
-    parsed &&
-    typeof parsed === "object" &&
-    "transliteration" in parsed &&
-    typeof parsed.transliteration === "string"
-      ? parsed.transliteration.trim()
-      : ""
-
-  if (!translation) {
-    throw new Error("OpenAI structured response missing 'translation'")
-  }
-
-  if (!transliteration) {
-    throw new Error("OpenAI structured response missing 'transliteration'")
-  }
-
-  return {
-    translation,
-    transliteration
-  } satisfies TranslationStructuredOutput
-}
-
-const getDefaultModel = () => {
-  const configuredModel = process.env.OPENAI_RESPONSES_MODEL || process.env.OPENAI_MODEL
-
-  if (!configuredModel || configuredModel === "gpt-realtime") {
-    return "gpt-4.1-nano"
-  }
-
-  return configuredModel
-}
-
-const createTranslate =
-  (): ResponsesTranslator["translate"] => async (text, targetLanguage) => {
+export const ResponsesTranslator = (): Translator => ({
+  translate: async (text, targetLanguage) => {
     const apiKey = process.env.OPENAI_API_KEY
 
     if (!apiKey) {
@@ -193,9 +106,89 @@ const createTranslate =
 
     return structuredTranslation
   }
+})
 
-export const ResponsesTranslator = (): ResponsesTranslator => {
-  return {
-    translate: createTranslate()
+const translationOutputSchema = {
+  type: "object",
+  properties: {
+    translation: {
+      type: "string",
+      description: "The translated text only, with no explanation"
+    },
+    transliteration: {
+      type: "string",
+      description:
+        "Pronunciation of the translated text written in the source input alphabet/script"
+    }
+  },
+  required: ["translation", "transliteration"],
+  additionalProperties: false
+} as const
+
+const getStructuredJsonText = (data: OpenAiResponsesResponse) => {
+  if (typeof data.output_text === "string" && data.output_text.trim()) {
+    return data.output_text.trim()
   }
+
+  const rawJson = data.output
+    ?.filter((item) => item.type === "message")
+    .flatMap((item) => item.content || [])
+    .filter((content) => content.type === "output_text" && typeof content.text === "string")
+    .map((content) => content.text || "")
+    .join("")
+    .trim()
+
+  if (!rawJson) {
+    throw new Error("OpenAI Responses API returned an empty structured response")
+  }
+
+  return rawJson
+}
+
+const parseStructuredTranslation = (rawJson: string) => {
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(rawJson)
+  } catch {
+    throw new Error("OpenAI Responses API returned invalid structured JSON")
+  }
+
+  const translation =
+    parsed &&
+      typeof parsed === "object" &&
+      "translation" in parsed &&
+      typeof parsed.translation === "string"
+      ? parsed.translation.trim()
+      : ""
+  const transliteration =
+    parsed &&
+      typeof parsed === "object" &&
+      "transliteration" in parsed &&
+      typeof parsed.transliteration === "string"
+      ? parsed.transliteration.trim()
+      : ""
+
+  if (!translation) {
+    throw new Error("OpenAI structured response missing 'translation'")
+  }
+
+  if (!transliteration) {
+    throw new Error("OpenAI structured response missing 'transliteration'")
+  }
+
+  return {
+    translation,
+    transliteration
+  } satisfies TranslationStructuredOutput
+}
+
+const getDefaultModel = () => {
+  const configuredModel = process.env.OPENAI_RESPONSES_MODEL || process.env.OPENAI_MODEL
+
+  if (!configuredModel || configuredModel === "gpt-realtime") {
+    return "gpt-4.1-nano"
+  }
+
+  return configuredModel
 }

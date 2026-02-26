@@ -24,7 +24,7 @@ type OpenAiRealtimeServerEvent = {
 }
 
 type BunWebSocketConstructor = {
-  new (
+  new(
     url: string,
     options?: {
       headers?: Record<string, string>
@@ -37,80 +37,8 @@ type TranslationStructuredOutput = {
   transliteration: string
 }
 
-export type OpenAiTranslator = Translator
-
-const parseStructuredTranslation = (rawText: string) => {
-  const trimmed = rawText.trim()
-  const jsonCandidate = trimmed
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "")
-    .trim()
-
-  if (!jsonCandidate) {
-    throw new Error("OpenAI returned an empty structured response")
-  }
-
-  let parsed: unknown
-
-  try {
-    parsed = JSON.parse(jsonCandidate)
-  } catch {
-    throw new Error("OpenAI returned invalid structured JSON")
-  }
-
-  const translation =
-    parsed &&
-    typeof parsed === "object" &&
-    "translation" in parsed &&
-    typeof parsed.translation === "string"
-      ? parsed.translation.trim()
-      : ""
-  const transliteration =
-    parsed &&
-    typeof parsed === "object" &&
-    "transliteration" in parsed &&
-    typeof parsed.transliteration === "string"
-      ? parsed.transliteration.trim()
-      : ""
-
-  if (!translation) {
-    throw new Error("OpenAI structured response missing 'translation'")
-  }
-
-  if (!transliteration) {
-    throw new Error("OpenAI structured response missing 'transliteration'")
-  }
-
-  return {
-    translation,
-    transliteration
-  } satisfies TranslationStructuredOutput
-}
-
-const getResponseTextFromDoneEvent = (event: OpenAiRealtimeServerEvent) => {
-  return (
-    event.response?.output
-      ?.flatMap((item) => item.content || [])
-      .filter((content) => typeof content.text === "string")
-      .map((content) => content.text || "")
-      .join("")
-      .trim() || ""
-  )
-}
-
-const buildTranslationPrompt = (text: string, targetLanguage: string) => {
-  return (
-    `Translate the following text to ${targetLanguage}.\n` +
-    "Return only a valid JSON object with exactly these keys:\n" +
-    `{"translation":"...","transliteration":"..."}\n` +
-    "The transliteration must be the pronunciation of the translated text written using the source input's alphabet/script.\n" +
-    "Do not include markdown, code fences, or explanations.\n\n" +
-    text
-  )
-}
-
-const createTranslate =
-  (): OpenAiTranslator["translate"] => async (text, targetLanguage) => {
+export const OpenAiTranslator = (): Translator => ({
+  translate: async (text, targetLanguage) => {
     const apiKey = process.env.OPENAI_API_KEY
 
     if (!apiKey) {
@@ -259,7 +187,7 @@ const createTranslate =
             settleError(
               new Error(
                 parsedEvent.response?.status_details?.error?.message ||
-                  `OpenAI response ended with status '${parsedEvent.response?.status}'`
+                `OpenAI response ended with status '${parsedEvent.response?.status}'`
               )
             )
             ws.close()
@@ -283,9 +211,74 @@ const createTranslate =
       })
     })
   }
+})
 
-export const OpenAiTranslator = (): OpenAiTranslator => {
-  return {
-    translate: createTranslate()
+const parseStructuredTranslation = (rawText: string) => {
+  const trimmed = rawText.trim()
+  const jsonCandidate = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim()
+
+  if (!jsonCandidate) {
+    throw new Error("OpenAI returned an empty structured response")
   }
+
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(jsonCandidate)
+  } catch {
+    throw new Error("OpenAI returned invalid structured JSON")
+  }
+
+  const translation =
+    parsed &&
+      typeof parsed === "object" &&
+      "translation" in parsed &&
+      typeof parsed.translation === "string"
+      ? parsed.translation.trim()
+      : ""
+  const transliteration =
+    parsed &&
+      typeof parsed === "object" &&
+      "transliteration" in parsed &&
+      typeof parsed.transliteration === "string"
+      ? parsed.transliteration.trim()
+      : ""
+
+  if (!translation) {
+    throw new Error("OpenAI structured response missing 'translation'")
+  }
+
+  if (!transliteration) {
+    throw new Error("OpenAI structured response missing 'transliteration'")
+  }
+
+  return {
+    translation,
+    transliteration
+  } satisfies TranslationStructuredOutput
+}
+
+const getResponseTextFromDoneEvent = (event: OpenAiRealtimeServerEvent) => {
+  return (
+    event.response?.output
+      ?.flatMap((item) => item.content || [])
+      .filter((content) => typeof content.text === "string")
+      .map((content) => content.text || "")
+      .join("")
+      .trim() || ""
+  )
+}
+
+const buildTranslationPrompt = (text: string, targetLanguage: string) => {
+  return (
+    `Translate the following text to ${targetLanguage}.\n` +
+    "Return only a valid JSON object with exactly these keys:\n" +
+    `{"translation":"...","transliteration":"..."}\n` +
+    "The transliteration must be the pronunciation of the translated text written using the source input's alphabet/script.\n" +
+    "Do not include markdown, code fences, or explanations.\n\n" +
+    text
+  )
 }

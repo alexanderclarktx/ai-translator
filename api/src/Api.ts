@@ -1,5 +1,5 @@
 import {
-  formatUptime, TranslateModel, TranslateWsClientMessage, TranslateWsServerMessage
+  formatUptime, TranslateModel, TranslateWsClientMessage
 } from "@template/core"
 import { AnthropicTranslator, OpenAiTranslator } from "@template/api"
 
@@ -27,13 +27,6 @@ const createTextResponse = (text: string, status = 200) => {
     status,
     headers: corsHeaders
   })
-}
-
-const sendWsMessage = (
-  ws: Bun.ServerWebSocket<undefined>,
-  message: TranslateWsServerMessage
-) => {
-  ws.send(JSON.stringify(message))
 }
 
 const logServerError = (context: string, error: unknown) => {
@@ -75,16 +68,12 @@ const normalizeTranslateInput = (
 
 const parseTranslateWsMessage = (
   rawMessage: unknown
-):
-  | {
-      error: string
-    }
-  | {
-      requestId: string
-      text: string
-      targetLanguage: string
-      model: TranslateModel
-    } => {
+): { error: string } | {
+  requestId: string
+  text: string
+  targetLanguage: string
+  model: TranslateModel
+} => {
   if (!rawMessage || typeof rawMessage !== "object") {
     return {
       error: "Invalid websocket message"
@@ -139,18 +128,14 @@ const parseWsJsonMessage = (message: string | Uint8Array | Buffer) => {
 }
 
 export const createApiServer = () => {
+
   const anthropicTranslator = AnthropicTranslator()
   const openAiTranslator = OpenAiTranslator()
-  const translateWithModel = async (
-    model: TranslateModel,
-    text: string,
-    targetLanguage: string
-  ) => {
-    if (model === "anthropic") {
-      return anthropicTranslator.translate(text, targetLanguage)
-    }
 
-    return openAiTranslator.translate(text, targetLanguage)
+  const translateWithModel = async (model: TranslateModel, text: string, targetLanguage: string) => {
+    const translator = model === "anthropic" ? anthropicTranslator : openAiTranslator
+
+    return translator.translate(text, targetLanguage)
   }
 
   const server = Bun.serve({
@@ -171,69 +156,16 @@ export const createApiServer = () => {
 
       if (url.pathname === "/api/ws") {
         const upgraded = serverInstance.upgrade(request)
-
-        if (upgraded) {
-          return
-        }
+        if (upgraded) return
 
         return createTextResponse("WebSocket upgrade failed", 400)
-      }
-
-      if (url.pathname === "/api/translate" && request.method === "POST") {
-        try {
-          const { text, targetLanguage, model } = await parseTranslateRequest(request)
-
-          if (!text) {
-            return createJsonResponse(
-              {
-                error: "Request body must include a non-empty 'text' string"
-              },
-              400
-            )
-          }
-
-          if (!targetLanguage) {
-            return createJsonResponse(
-              {
-                error:
-                  "Request body must include a non-empty 'targetLanguage' string"
-              },
-              400
-            )
-          }
-
-          const translatedOutput = await translateWithModel(
-            model || "openai",
-            text,
-            targetLanguage
-          )
-
-          return createJsonResponse({
-            text: translatedOutput.translation,
-            transliteration: translatedOutput.transliteration
-          })
-        } catch (error) {
-          logServerError(`${request.method} ${url.pathname}`, error)
-
-          const message =
-            error instanceof Error ? error.message : "Translation failed"
-
-          return createJsonResponse(
-            {
-              error: message
-            },
-            500
-          )
-        }
       }
 
       return createTextResponse("Not Found", 404)
     },
     websocket: {
       open(ws) {
-        sendWsMessage(ws, {
-          type: "ready"
-        })
+        ws.send(JSON.stringify({ type: "ready" }))
       },
       async message(ws, message) {
         let parsedJson: unknown
@@ -242,20 +174,21 @@ export const createApiServer = () => {
           parsedJson = parseWsJsonMessage(message)
         } catch (error) {
           logServerError("WS parse", error)
-          sendWsMessage(ws, {
+
+          ws.send(JSON.stringify({
             type: "translate.error",
             error: "Invalid JSON message"
-          })
+          }))
           return
         }
 
         const parsedMessage = parseTranslateWsMessage(parsedJson)
 
         if ("error" in parsedMessage) {
-          sendWsMessage(ws, {
+          ws.send(JSON.stringify({
             type: "translate.error",
             error: parsedMessage.error
-          })
+          }))
           return
         }
 
@@ -266,23 +199,23 @@ export const createApiServer = () => {
             parsedMessage.targetLanguage
           )
 
-          sendWsMessage(ws, {
+          ws.send(JSON.stringify({
             type: "translate.success",
             requestId: parsedMessage.requestId,
             text: translatedOutput.translation,
             transliteration: translatedOutput.transliteration
-          })
+          }))
         } catch (error) {
           logServerError(`WS translate ${parsedMessage.requestId}`, error)
 
           const messageText =
             error instanceof Error ? error.message : "Translation failed"
 
-          sendWsMessage(ws, {
+          ws.send(JSON.stringify({
             type: "translate.error",
             requestId: parsedMessage.requestId,
             error: messageText
-          })
+          }))
         }
       }
     }

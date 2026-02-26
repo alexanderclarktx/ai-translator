@@ -17,8 +17,6 @@ type TranslationStructuredOutput = {
   transliteration: string
 }
 
-export type AnthropicTranslator = Translator
-
 const translationOutputSchema = {
   type: "object",
   properties: {
@@ -36,56 +34,8 @@ const translationOutputSchema = {
   additionalProperties: false
 } as const
 
-const parseStructuredTranslation = (content?: AnthropicMessageContentBlock[]) => {
-  const rawJson = content
-    ?.filter((block) => block.type === "text" && typeof block.text === "string")
-    .map((block) => block.text || "")
-    .join("")
-    .trim()
-
-  if (!rawJson) {
-    throw new Error("Anthropic returned an empty structured response")
-  }
-
-  let parsed: unknown
-
-  try {
-    parsed = JSON.parse(rawJson)
-  } catch {
-    throw new Error("Anthropic returned invalid structured JSON")
-  }
-
-  const translation =
-    parsed &&
-    typeof parsed === "object" &&
-    "translation" in parsed &&
-    typeof parsed.translation === "string"
-      ? parsed.translation.trim()
-      : ""
-  const transliteration =
-    parsed &&
-    typeof parsed === "object" &&
-    "transliteration" in parsed &&
-    typeof parsed.transliteration === "string"
-      ? parsed.transliteration.trim()
-      : ""
-
-  if (!translation) {
-    throw new Error("Anthropic structured response missing 'translation'")
-  }
-
-  if (!transliteration) {
-    throw new Error("Anthropic structured response missing 'transliteration'")
-  }
-
-  return {
-    translation,
-    transliteration
-  } satisfies TranslationStructuredOutput
-}
-
-const createTranslate =
-  (): AnthropicTranslator["translate"] => async (text, targetLanguage) => {
+export const AnthropicTranslator = (): Translator => ({
+  translate: async (text, targetLanguage) => {
     const apiKey = process.env.ANTHROPIC_API_KEY
 
     if (!apiKey) {
@@ -140,9 +90,52 @@ const createTranslate =
 
     return structuredTranslation
   }
+})
 
-export const AnthropicTranslator = (): AnthropicTranslator => {
-  return {
-    translate: createTranslate()
+const parseStructuredTranslation = (content?: AnthropicMessageContentBlock[]) => {
+  const rawJson = content
+    ?.filter((block) => block.type === "text" && typeof block.text === "string")
+    .map((block) => block.text || "")
+    .join("")
+    .trim()
+
+  if (!rawJson) {
+    throw new Error("Anthropic returned an empty structured response")
   }
+
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(rawJson)
+  } catch {
+    throw new Error("Anthropic returned invalid structured JSON")
+  }
+
+  const translation =
+    parsed &&
+      typeof parsed === "object" &&
+      "translation" in parsed &&
+      typeof parsed.translation === "string"
+      ? parsed.translation.trim()
+      : ""
+  const transliteration =
+    parsed &&
+      typeof parsed === "object" &&
+      "transliteration" in parsed &&
+      typeof parsed.transliteration === "string"
+      ? parsed.transliteration.trim()
+      : ""
+
+  if (!translation) {
+    throw new Error("Anthropic structured response missing 'translation'")
+  }
+
+  if (!transliteration) {
+    throw new Error("Anthropic structured response missing 'transliteration'")
+  }
+
+  return {
+    translation,
+    transliteration
+  } satisfies TranslationStructuredOutput
 }
