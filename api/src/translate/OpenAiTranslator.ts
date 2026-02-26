@@ -68,7 +68,7 @@ export const OpenAiTranslator = (): Translator => ({
           const structuredTranslation = parseStructuredTranslation(rawText)
           const responseDurationMs = performance.now() - requestStartedAt
           console.log(
-            `[openai] response received in ${responseDurationMs}ms (model ${model})`
+            `[openai] response received in ${responseDurationMs.toFixed(0)}ms (model ${model})`
           )
 
           isSettled = true
