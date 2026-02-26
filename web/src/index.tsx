@@ -37,15 +37,7 @@ const isEditableElement = (element: Element | null) => {
   return element.isContentEditable
 }
 
-const getRequestSignature = ({
-  text,
-  targetLanguage,
-  model
-}: {
-  text: string
-  targetLanguage: string
-  model: TranslateModel
-}) => {
+const getRequestSignature = ({ text, targetLanguage, model }: { text: string, targetLanguage: string, model: TranslateModel }) => {
   const normalizedText = normalizeText(text)
   return `${model}::${normalizedText}::${targetLanguage}`
 }
