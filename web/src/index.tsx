@@ -365,12 +365,10 @@ const App = () => {
 
   return (
     <main>
-      <header>
-        <h1>
-          <span>piggo translate</span>
-          {/* <img src="/favicon.svg" alt="" aria-hidden="true" className="title-icon" /> */}
-        </h1>
-      </header>
+      <h1>
+        Piggo Translate
+        {/* <img src="/favicon.svg" alt="" aria-hidden="true" className="title-icon" /> */}
+      </h1>
 
       {/* <TranslateToolbar
         errorText={errorText}
