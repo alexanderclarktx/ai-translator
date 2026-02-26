@@ -316,6 +316,7 @@ main {
   line-height: 1.45;
   outline: none;
   overflow: hidden;
+  cursor: default;
   transition: height 500ms ease, transform 500ms ease, background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
 }
 
@@ -346,10 +347,15 @@ main {
   cursor: pointer;
   border-radius: 0.5rem;
   overflow: hidden;
+  transition: background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
 }
 
 .transliteration-box:hover {
-  background: rgba(60, 53, 25, 0.06);
+  background: rgba(50, 50, 50, 0.05);
+}
+
+.transliteration-box.is-collapsed:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .transliteration-box:disabled {
@@ -364,6 +370,7 @@ main {
 
 .transliteration-box.is-collapsed {
   padding: 0.1rem 0;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .transliteration-collapsed-label {

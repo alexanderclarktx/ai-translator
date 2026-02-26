@@ -44,7 +44,7 @@ const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) =
 
         return nextDesiredText.slice(0, currentText.length + 1)
       })
-    }, 50)
+    }, 30)
 
     return () => {
       window.clearInterval(intervalId)
@@ -54,7 +54,7 @@ const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) =
   return (
     <button
       type="button"
-      className={`transliteration-box${isExpanded ? "" : " is-collapsed"}${hasValue ? " has-value" : ""}`}
+      className={`transliteration-box${isExpanded ? "" : " is-collapsed"}${hasValue ? " has-value" : ""} pane-fade-in`}
       aria-label={
         !hasValue
           ? "No transliteration available"

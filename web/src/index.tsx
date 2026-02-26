@@ -410,7 +410,7 @@ const App = () => {
               onToggle={() => setIsTransliterationVisible((value) => !value)}
             />
           ) : null}
-          readOnly
+          readOnly={false}
         />
 
         {hasInputText && isSpinnerVisible ? (

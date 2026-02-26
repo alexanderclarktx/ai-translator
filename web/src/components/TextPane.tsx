@@ -28,9 +28,9 @@ const TextPane = ({
   useEffect(() => {
     setDesiredText(value)
 
-    if (!readOnly) {
-      setText(value)
-    }
+    // if (!readOnly) {
+    //   setText(value)
+    // }
   }, [readOnly, value])
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const TextPane = ({
 
         return nextDesiredText.slice(0, currentText.length + 1)
       })
-    }, 100)
+    }, 80)
 
     return () => {
       window.clearInterval(intervalId)
