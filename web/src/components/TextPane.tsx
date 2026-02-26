@@ -36,6 +36,10 @@ const TextPane = ({
         readOnly={readOnly}
         autoFocus={autoFocus}
         onChange={(event) => onChange?.(event.target.value)}
+        style={{
+          textAlign: "center",
+          // transform: "translate(-50%)"
+        }}
       />
 
       {footer ? <div className="pane-footer">{footer}</div> : null}
