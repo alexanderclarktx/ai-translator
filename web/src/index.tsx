@@ -297,7 +297,7 @@ const App = () => {
           id="output-pane-title"
           title="Translated Output"
           showHeader={false}
-          placeholder="translation"
+          placeholder=""
           ariaLabel="Translated text"
           value={outputText}
           autoFocus={false}
