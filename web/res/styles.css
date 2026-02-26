@@ -26,7 +26,7 @@ h1 {
   justify-content: center;
   font-family: 'Courier New', monospace;
   font-weight: 400;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.5);
   white-space: nowrap;
   margin: 0;
@@ -60,11 +60,11 @@ h1 {
 }
 
 .title-icon {
-  width: 1.8rem;
-  height: 1.8rem;
-  display: block;
-  flex-shrink: 0;
-  align-self: flex-start;
+  justify-self: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
 
 h2 {

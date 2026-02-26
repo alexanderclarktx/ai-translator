@@ -365,9 +365,9 @@ const App = () => {
 
   return (
     <main>
+      <img src="/piggo.svg" alt="" aria-hidden="true" className="title-icon" /> 
       <h1>
         Piggo Translate
-        {/* <img src="/favicon.svg" alt="" aria-hidden="true" className="title-icon" /> */}
       </h1>
 
       {/* <TranslateToolbar
