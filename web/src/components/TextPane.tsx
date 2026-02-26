@@ -1,6 +1,6 @@
 import { MutableRefObject, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
 
-const textPaneAnimationMinIntervalMs = 35
+const textPaneAnimationMinIntervalMs = 10
 const textPaneAnimationMaxIntervalMs = 110
 const textPaneAnimationFastThreshold = 24
 
@@ -33,7 +33,8 @@ const getDynamicIntervalDuration = (currentText: string, desiredText: string) =>
   const clampedProgress = Math.min((workLeft - 1) / (textPaneAnimationFastThreshold - 1), 1)
   const intervalRange = textPaneAnimationMaxIntervalMs - textPaneAnimationMinIntervalMs
 
-  return Math.round(textPaneAnimationMaxIntervalMs - (intervalRange * clampedProgress))
+  const result = Math.round(textPaneAnimationMaxIntervalMs - (intervalRange * clampedProgress))
+  return result
 }
 
 type TextPaneProps = {
@@ -58,7 +59,6 @@ const TextPane = ({
   const localTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [text, setText] = useState(value)
   const [desiredText, setDesiredText] = useState(value)
-  const desiredTextRef = useRef(value)
   const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ")
 
   useEffect(() => {
@@ -68,10 +68,6 @@ const TextPane = ({
     //   setText(value)
     // }
   }, [readOnly, value])
-
-  useEffect(() => {
-    desiredTextRef.current = desiredText
-  }, [desiredText])
 
   useEffect(() => {
     if (!desiredText) {
@@ -84,9 +80,9 @@ const TextPane = ({
       return
     }
 
-    const intervalId = window.setInterval(() => {
+    const timeoutId = window.setTimeout(() => {
       setText((currentText) => {
-        const nextDesiredText = desiredTextRef.current
+        const nextDesiredText = desiredText
 
         if (currentText === nextDesiredText) {
           return currentText
@@ -103,7 +99,7 @@ const TextPane = ({
     }, getDynamicIntervalDuration(text, desiredText))
 
     return () => {
-      window.clearInterval(intervalId)
+      window.clearTimeout(timeoutId)
     }
   }, [desiredText, text])
 

@@ -17107,6 +17107,33 @@ var jsx_dev_runtime2 = __toESM(require_jsx_dev_runtime(), 1);
 // src/components/TextPane.tsx
 var import_react = __toESM(require_react(), 1);
 var jsx_dev_runtime3 = __toESM(require_jsx_dev_runtime(), 1);
+var textPaneAnimationMinIntervalMs = 10;
+var textPaneAnimationMaxIntervalMs = 110;
+var textPaneAnimationFastThreshold = 24;
+var getSharedPrefixLength = (left, right) => {
+  const maxLength = Math.min(left.length, right.length);
+  let index = 0;
+  while (index < maxLength && left[index] === right[index]) {
+    index += 1;
+  }
+  return index;
+};
+var getAnimationWorkLeft = (currentText, desiredText) => {
+  const sharedPrefixLength = getSharedPrefixLength(currentText, desiredText);
+  const deleteSteps = currentText.length - sharedPrefixLength;
+  const addSteps = desiredText.length - sharedPrefixLength;
+  return deleteSteps + addSteps;
+};
+var getDynamicIntervalDuration = (currentText, desiredText) => {
+  const workLeft = getAnimationWorkLeft(currentText, desiredText);
+  if (workLeft <= 1) {
+    return textPaneAnimationMaxIntervalMs;
+  }
+  const clampedProgress = Math.min((workLeft - 1) / (textPaneAnimationFastThreshold - 1), 1);
+  const intervalRange = textPaneAnimationMaxIntervalMs - textPaneAnimationMinIntervalMs;
+  const result = Math.round(textPaneAnimationMaxIntervalMs - intervalRange * clampedProgress);
+  return result;
+};
 var TextPane = ({
   id,
   title,
@@ -17119,18 +17146,50 @@ var TextPane = ({
   readOnly,
   autoFocus,
   onChange,
-  showHeader
+  showHeader,
+  textareaRef
 }) => {
-  const textareaRef = import_react.useRef(null);
+  const localTextareaRef = import_react.useRef(null);
+  const [text, setText] = import_react.useState(value);
+  const [desiredText, setDesiredText] = import_react.useState(value);
   const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ");
+  import_react.useEffect(() => {
+    setDesiredText(value);
+  }, [readOnly, value]);
+  import_react.useEffect(() => {
+    if (!desiredText) {
+      setText("");
+    }
+  }, [desiredText]);
+  import_react.useEffect(() => {
+    if (text === desiredText) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setText((currentText) => {
+        const nextDesiredText = desiredText;
+        if (currentText === nextDesiredText) {
+          return currentText;
+        }
+        const desiredPrefix = nextDesiredText.slice(0, currentText.length);
+        if (currentText !== desiredPrefix) {
+          return currentText.slice(0, -1);
+        }
+        return nextDesiredText.slice(0, currentText.length + 1);
+      });
+    }, getDynamicIntervalDuration(text, desiredText));
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [desiredText, text]);
   import_react.useLayoutEffect(() => {
-    const textarea = textareaRef.current;
+    const textarea = localTextareaRef.current;
     if (!textarea) {
       return;
     }
-    textarea.style.height = "0px";
+    textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [value]);
+  }, [text]);
   return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("section", {
     className: paneClassName,
     "aria-labelledby": showHeader ? id : undefined,
@@ -17144,19 +17203,29 @@ var TextPane = ({
         }, undefined, false, undefined, this)
       }, undefined, false, undefined, this) : null,
       /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("textarea", {
-        ref: textareaRef,
+        ref: (node) => {
+          localTextareaRef.current = node;
+          if (textareaRef) {
+            textareaRef.current = node;
+          }
+        },
         className: "pane-textarea",
         rows: 1,
         placeholder,
         "aria-label": ariaLabel,
-        value,
+        value: text,
         readOnly,
         autoFocus,
         autoCorrect: "off",
         autoCapitalize: "off",
         autoComplete: "off",
         spellCheck: false,
-        onChange: (event) => onChange?.(event.target.value),
+        onChange: (event) => {
+          const nextValue = event.target.value;
+          setText(nextValue);
+          setDesiredText(nextValue);
+          onChange?.(nextValue);
+        },
         style: {
           textAlign: "center"
         }
@@ -17167,13 +17236,71 @@ var TextPane = ({
   }, undefined, true, undefined, this);
 };
 // src/components/Transliteration.tsx
+var import_react2 = __toESM(require_react(), 1);
 var jsx_dev_runtime4 = __toESM(require_jsx_dev_runtime(), 1);
+var transliterationAnimationMinIntervalMs = 15;
+var transliterationAnimationMaxIntervalMs = 55;
+var transliterationAnimationFastThreshold = 28;
+var getSharedPrefixLength2 = (left, right) => {
+  const maxLength = Math.min(left.length, right.length);
+  let index = 0;
+  while (index < maxLength && left[index] === right[index]) {
+    index += 1;
+  }
+  return index;
+};
+var getAnimationWorkLeft2 = (currentText, desiredText) => {
+  const sharedPrefixLength = getSharedPrefixLength2(currentText, desiredText);
+  const deleteSteps = currentText.length - sharedPrefixLength;
+  const addSteps = desiredText.length - sharedPrefixLength;
+  return deleteSteps + addSteps;
+};
+var getDynamicIntervalDuration2 = (currentText, desiredText) => {
+  const workLeft = getAnimationWorkLeft2(currentText, desiredText);
+  if (workLeft <= 1) {
+    return transliterationAnimationMaxIntervalMs;
+  }
+  const clampedProgress = Math.min((workLeft - 1) / (transliterationAnimationFastThreshold - 1), 1);
+  const intervalRange = transliterationAnimationMaxIntervalMs - transliterationAnimationMinIntervalMs;
+  return Math.round(transliterationAnimationMaxIntervalMs - intervalRange * clampedProgress);
+};
 var Transliteration = ({ value, isVisible, onToggle }) => {
+  const [text, setText] = import_react2.useState(value);
+  const [desiredText, setDesiredText] = import_react2.useState(value);
   const hasValue = Boolean(value);
   const isExpanded = hasValue && isVisible;
+  import_react2.useEffect(() => {
+    setDesiredText(value);
+  }, [value]);
+  import_react2.useEffect(() => {
+    if (!desiredText) {
+      setText("");
+    }
+  }, [desiredText]);
+  import_react2.useEffect(() => {
+    if (text === desiredText) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setText((currentText) => {
+        const nextDesiredText = desiredText;
+        if (currentText === nextDesiredText) {
+          return currentText;
+        }
+        const desiredPrefix = nextDesiredText.slice(0, currentText.length);
+        if (currentText !== desiredPrefix) {
+          return currentText.slice(0, -1);
+        }
+        return nextDesiredText.slice(0, currentText.length + 1);
+      });
+    }, getDynamicIntervalDuration2(text, desiredText));
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [desiredText, text]);
   return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
     type: "button",
-    className: `transliteration-box${isExpanded ? "" : " is-collapsed"}${hasValue ? " has-value" : ""}`,
+    className: `transliteration-box${isExpanded ? "" : " is-collapsed"}${hasValue ? " has-value" : ""} pane-fade-in`,
     "aria-label": !hasValue ? "No transliteration available" : isExpanded ? "Hide transliteration" : "Show transliteration",
     "aria-expanded": isExpanded,
     "aria-hidden": !hasValue,
@@ -17185,7 +17312,7 @@ var Transliteration = ({ value, isVisible, onToggle }) => {
       }, undefined, false, undefined, this),
       /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("p", {
         className: `pane-footer transliteration-text transliteration-panel${isExpanded ? " is-visible" : ""}`,
-        children: value
+        children: text
       }, undefined, false, undefined, this)
     ]
   }, undefined, true, undefined, this);
@@ -17193,7 +17320,7 @@ var Transliteration = ({ value, isVisible, onToggle }) => {
 // src/components/TranslateToolbar.tsx
 var jsx_dev_runtime5 = __toESM(require_jsx_dev_runtime(), 1);
 // src/index.tsx
-var import_react2 = __toESM(require_react(), 1);
+var import_react3 = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
 var jsx_dev_runtime6 = __toESM(require_jsx_dev_runtime(), 1);
 var languageOptions = [
@@ -17207,40 +17334,66 @@ var getTranslateWsUrl = () => {
   const { hostname } = window.location;
   return `http://${hostname}:5001/api/ws`;
 };
-var getRequestSignature = ({
-  text,
-  targetLanguage,
-  model
-}) => {
-  const normalizedText = text.replace(/\s+/g, " ").trim();
+var normalizeText = (text) => text.replace(/\s+/g, " ").trim();
+var isEditableElement = (element) => {
+  if (!(element instanceof HTMLElement)) {
+    return false;
+  }
+  if (element instanceof HTMLTextAreaElement) {
+    return !element.readOnly && !element.disabled;
+  }
+  if (element instanceof HTMLInputElement) {
+    return !element.readOnly && !element.disabled;
+  }
+  return element.isContentEditable;
+};
+var getRequestSignature = ({ text, targetLanguage, model }) => {
+  const normalizedText = normalizeText(text);
   return `${model}::${normalizedText}::${targetLanguage}`;
 };
 var App = () => {
-  const [inputText, setInputText] = import_react2.useState("");
-  const [outputText, setOutputText] = import_react2.useState("");
-  const [outputTransliteration, setOutputTransliteration] = import_react2.useState("");
-  const [isTransliterationVisible, setIsTransliterationVisible] = import_react2.useState(true);
-  const [errorText, setErrorText] = import_react2.useState("");
-  const [isTranslating, setIsTranslating] = import_react2.useState(false);
-  const [isSocketOpen, setIsSocketOpen] = import_react2.useState(false);
-  const [debouncedRequest, setDebouncedRequest] = import_react2.useState(null);
-  const [targetLanguage, setTargetLanguage] = import_react2.useState(languageOptions[1].value);
-  const [selectedModel, setSelectedModel] = import_react2.useState("openai");
-  const socketRef = import_react2.useRef(null);
-  const reconnectTimeoutIdRef = import_react2.useRef(null);
-  const requestCounterRef = import_react2.useRef(0);
-  const latestRequestIdRef = import_react2.useRef("");
-  const lastRequestedSignatureRef = import_react2.useRef("");
+  const [inputText, setInputText] = import_react3.useState("");
+  const [outputText, setOutputText] = import_react3.useState("");
+  const [outputTransliteration, setOutputTransliteration] = import_react3.useState("");
+  const [isTransliterationVisible, setIsTransliterationVisible] = import_react3.useState(true);
+  const [errorText, setErrorText] = import_react3.useState("");
+  const [isTranslating, setIsTranslating] = import_react3.useState(false);
+  const [isSocketOpen, setIsSocketOpen] = import_react3.useState(false);
+  const [latestRequestSnapshot, setLatestRequestSnapshot] = import_react3.useState({
+    id: "",
+    normalizedInputText: ""
+  });
+  const [debouncedRequest, setDebouncedRequest] = import_react3.useState(null);
+  const [targetLanguage, setTargetLanguage] = import_react3.useState(languageOptions[1].value);
+  const [selectedModel, setSelectedModel] = import_react3.useState("openai");
+  const socketRef = import_react3.useRef(null);
+  const inputTextareaRef = import_react3.useRef(null);
+  const pendingInputSelectionRef = import_react3.useRef(null);
+  const reconnectTimeoutIdRef = import_react3.useRef(null);
+  const requestCounterRef = import_react3.useRef(0);
+  const latestRequestRef = import_react3.useRef({
+    id: "",
+    normalizedInputText: ""
+  });
+  const currentNormalizedInputTextRef = import_react3.useRef("");
+  const lastRequestedSignatureRef = import_react3.useRef("");
+  const normalizedInputText = normalizeText(inputText);
+  const hasInputText = !!normalizedInputText;
+  const isSpinnerVisible = isTranslating && !!latestRequestSnapshot.id && normalizedInputText === latestRequestSnapshot.normalizedInputText;
   const sendTranslateRequest = (requestInput) => {
     const socket = socketRef.current;
-    if (!requestInput.text || isTranslating || !socket || socket.readyState !== WebSocket.OPEN) {
+    if (!requestInput.text || !socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
     requestCounterRef.current += 1;
     const requestId = `${Date.now()}-${requestCounterRef.current}`;
     setErrorText("");
     setIsTranslating(true);
-    latestRequestIdRef.current = requestId;
+    latestRequestRef.current = {
+      id: requestId,
+      normalizedInputText: normalizeText(requestInput.text)
+    };
+    setLatestRequestSnapshot(latestRequestRef.current);
     lastRequestedSignatureRef.current = getRequestSignature(requestInput);
     const request = {
       type: "translate.request",
@@ -17252,7 +17405,7 @@ var App = () => {
     console.log("Sending translate request", request);
     socket.send(JSON.stringify(request));
   };
-  import_react2.useEffect(() => {
+  import_react3.useEffect(() => {
     let isDisposed = false;
     const clearReconnectTimeout = () => {
       if (reconnectTimeoutIdRef.current === null) {
@@ -17289,7 +17442,11 @@ var App = () => {
         if (message.type === "ready") {
           return;
         }
-        if (message.requestId && latestRequestIdRef.current && message.requestId !== latestRequestIdRef.current) {
+        const latestRequestId = latestRequestRef.current.id;
+        const latestRequestInput = latestRequestRef.current.normalizedInputText;
+        const currentInput = currentNormalizedInputTextRef.current;
+        const isActiveCurrentRequest = !!latestRequestId && !!latestRequestInput && !!currentInput && currentInput === latestRequestInput && (!message.requestId || message.requestId === latestRequestId);
+        if (!isActiveCurrentRequest) {
           return;
         }
         setIsTranslating(false);
@@ -17316,6 +17473,9 @@ var App = () => {
         }
         setIsSocketOpen(false);
         setIsTranslating(false);
+        latestRequestRef.current = { id: "", normalizedInputText: "" };
+        setLatestRequestSnapshot(latestRequestRef.current);
+        currentNormalizedInputTextRef.current = "";
         lastRequestedSignatureRef.current = "";
         reconnectTimeoutIdRef.current = window.setTimeout(() => {
           connectSocket();
@@ -17337,13 +17497,58 @@ var App = () => {
       }
     };
   }, []);
-  import_react2.useEffect(() => {
+  import_react3.useEffect(() => {
+    const textarea = inputTextareaRef.current;
+    const pendingSelection = pendingInputSelectionRef.current;
+    if (!textarea || !pendingSelection) {
+      return;
+    }
+    pendingInputSelectionRef.current = null;
+    textarea.setSelectionRange(pendingSelection.start, pendingSelection.end);
+  }, [inputText]);
+  import_react3.useEffect(() => {
+    const handleWindowKeyDown = (event) => {
+      const textarea = inputTextareaRef.current;
+      if (!textarea)
+        return;
+      textarea.focus();
+      if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.altKey || event.metaKey)
+        return;
+      const activeElement = document.activeElement;
+      if (activeElement === textarea)
+        return;
+      if (isEditableElement(activeElement))
+        return;
+      event.preventDefault();
+      const selectionStart = textarea.selectionStart ?? textarea.value.length;
+      const selectionEnd = textarea.selectionEnd ?? textarea.value.length;
+      const isBackspaceKey = event.key === "Backspace";
+      const deleteStart = isBackspaceKey && selectionStart === selectionEnd ? Math.max(0, selectionStart - 1) : selectionStart;
+      const deleteEnd = selectionEnd;
+      const insertedText = isBackspaceKey ? "" : event.key;
+      const nextValue = `${textarea.value.slice(0, deleteStart)}${insertedText}${textarea.value.slice(deleteEnd)}`;
+      const nextCursorPosition = deleteStart + insertedText.length;
+      pendingInputSelectionRef.current = {
+        start: nextCursorPosition,
+        end: nextCursorPosition
+      };
+      setInputText(nextValue);
+    };
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, []);
+  import_react3.useEffect(() => {
     const trimmedText = inputText.trim();
+    currentNormalizedInputTextRef.current = normalizedInputText;
     if (!trimmedText) {
       setOutputText("");
       setOutputTransliteration("");
       setErrorText("");
       setDebouncedRequest(null);
+      latestRequestRef.current = { id: "", normalizedInputText: "" };
+      setLatestRequestSnapshot(latestRequestRef.current);
       lastRequestedSignatureRef.current = "";
       return;
     }
@@ -17357,14 +17562,16 @@ var App = () => {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [inputText]);
-  import_react2.useEffect(() => {
+  }, [inputText, normalizedInputText]);
+  import_react3.useEffect(() => {
     const trimmedText = inputText.trim();
     if (!trimmedText) {
       setOutputText("");
       setOutputTransliteration("");
       setErrorText("");
       setDebouncedRequest(null);
+      latestRequestRef.current = { id: "", normalizedInputText: "" };
+      setLatestRequestSnapshot(latestRequestRef.current);
       lastRequestedSignatureRef.current = "";
       return;
     }
@@ -17374,8 +17581,8 @@ var App = () => {
       model: selectedModel
     });
   }, [targetLanguage]);
-  import_react2.useEffect(() => {
-    if (!debouncedRequest || !isSocketOpen || isTranslating) {
+  import_react3.useEffect(() => {
+    if (!debouncedRequest || !isSocketOpen) {
       return;
     }
     const nextSignature = getRequestSignature(debouncedRequest);
@@ -17383,15 +17590,11 @@ var App = () => {
       return;
     }
     sendTranslateRequest(debouncedRequest);
-  }, [debouncedRequest, isSocketOpen, isTranslating]);
+  }, [debouncedRequest, isSocketOpen]);
   return /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("main", {
     children: [
-      /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("header", {
-        children: /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("h1", {
-          children: /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
-            children: "Piggo Translate"
-          }, undefined, false, undefined, this)
-        }, undefined, false, undefined, this)
+      /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("h1", {
+        children: "Piggo Translate"
       }, undefined, false, undefined, this),
       /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("section", {
         className: "pane-stack",
@@ -17401,10 +17604,12 @@ var App = () => {
             id: "input-pane-title",
             title: "Input",
             showHeader: false,
+            className: "pane-fade-in",
             placeholder: "",
             ariaLabel: "Text to translate",
             value: inputText,
             autoFocus: true,
+            textareaRef: inputTextareaRef,
             onChange: setInputText,
             readOnly: false
           }, undefined, false, undefined, this),
@@ -17412,19 +17617,19 @@ var App = () => {
             id: "output-pane-title",
             title: "Translated Output",
             showHeader: false,
-            className: inputText.trim() ? undefined : "pane-transparent",
+            className: hasInputText ? undefined : "pane-transparent",
             placeholder: "",
             ariaLabel: "Translated text",
-            value: outputText,
+            value: hasInputText ? outputText : "",
             autoFocus: false,
-            footer: /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(Transliteration, {
+            footer: hasInputText ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(Transliteration, {
               value: outputTransliteration,
               isVisible: isTransliterationVisible,
               onToggle: () => setIsTransliterationVisible((value) => !value)
-            }, undefined, false, undefined, this),
-            readOnly: true
+            }, undefined, false, undefined, this) : null,
+            readOnly: false
           }, undefined, false, undefined, this),
-          isTranslating ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
+          hasInputText && isSpinnerVisible ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
             className: "spinner pane-stack-spinner",
             "aria-hidden": "true"
           }, undefined, false, undefined, this) : null

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
-const transliterationAnimationMinIntervalMs = 16
+const transliterationAnimationMinIntervalMs = 15
 const transliterationAnimationMaxIntervalMs = 55
 const transliterationAnimationFastThreshold = 28
 
@@ -45,17 +45,12 @@ type TransliterationProps = {
 const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) => {
   const [text, setText] = useState(value)
   const [desiredText, setDesiredText] = useState(value)
-  const desiredTextRef = useRef(value)
   const hasValue = Boolean(value)
   const isExpanded = hasValue && isVisible
 
   useEffect(() => {
     setDesiredText(value)
   }, [value])
-
-  useEffect(() => {
-    desiredTextRef.current = desiredText
-  }, [desiredText])
 
   useEffect(() => {
     if (!desiredText) {
@@ -68,9 +63,9 @@ const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) =
       return
     }
 
-    const intervalId = window.setInterval(() => {
+    const timeoutId = window.setTimeout(() => {
       setText((currentText) => {
-        const nextDesiredText = desiredTextRef.current
+        const nextDesiredText = desiredText
 
         if (currentText === nextDesiredText) {
           return currentText
@@ -87,7 +82,7 @@ const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) =
     }, getDynamicIntervalDuration(text, desiredText))
 
     return () => {
-      window.clearInterval(intervalId)
+      window.clearTimeout(timeoutId)
     }
   }, [desiredText, text])
 
