@@ -28,7 +28,7 @@ const TextPane = ({
       return
     }
 
-    textarea.style.height = "0px"
+    textarea.style.height = "auto"
     textarea.style.height = `${textarea.scrollHeight}px`
   }, [value])
 
