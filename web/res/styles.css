@@ -1,6 +1,6 @@
 :root {
   font-family: "Helvetica Neue", Arial, sans-serif;
-  font-size: 24px;
+  font-size: 26px;
   background-color: #27252b;
   color: #1c2024;
 }
@@ -24,7 +24,7 @@ h1 {
   gap: 0.8rem;
   font-family: 'Courier New', monospace;
   font-weight: 400;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.5);
   white-space: nowrap;
   margin: 0 0 1rem 0;
@@ -48,6 +48,10 @@ h1 {
 
 @media (prefers-reduced-motion: reduce) {
   h1 {
+    animation: none;
+  }
+
+  .pane-fade-in {
     animation: none;
   }
 }
@@ -302,6 +306,10 @@ main {
   flex-direction: column;
   min-width: 0;
   transition: height 500ms ease, transform 500ms ease, background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
+}
+
+.pane-fade-in {
+  animation: title-fade-in 500ms ease-out both;
 }
 
 .pane-no-header {

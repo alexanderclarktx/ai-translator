@@ -1,5 +1,5 @@
 import {
-  formatUptime, TranslateModel, TranslateWsClientMessage
+  TranslateModel, TranslateWsClientMessage
 } from "@template/core"
 import { AnthropicTranslator, httpJson, httpText, OpenAiTranslator } from "@template/api"
 
@@ -116,8 +116,7 @@ export const createApiServer = () => {
 
       if (url.pathname === "/api") {
         return httpJson({
-          status: "ok",
-          uptime: formatUptime(process.uptime())
+          status: "ok"
         })
       }
 

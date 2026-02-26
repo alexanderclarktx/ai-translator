@@ -317,6 +317,7 @@ const App = () => {
           id="input-pane-title"
           title="Input"
           showHeader={false}
+          className="pane-fade-in"
           placeholder=""
           ariaLabel="Text to translate"
           value={inputText}
