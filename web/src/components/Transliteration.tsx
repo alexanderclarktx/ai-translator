@@ -23,13 +23,6 @@ const Transliteration = ({ value, isVisible, onToggle }: TransliterationProps) =
       aria-hidden={!hasValue}
       disabled={!hasValue}
       onClick={onToggle}
-      title={
-        !hasValue
-          ? "No transliteration available"
-          : isExpanded
-            ? "Click to collapse transliteration"
-            : "Click to expand transliteration"
-      }
     >
       <span className={`transliteration-collapsed-label${hasValue && !isExpanded ? " is-visible" : ""}`}/>
 

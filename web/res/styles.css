@@ -349,7 +349,6 @@ main {
   padding: 0;
   cursor: pointer;
   border-radius: 0.5rem;
-  transition: height 500ms ease, transform 500ms ease, background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
   overflow: hidden;
 }
 
@@ -409,7 +408,7 @@ main {
   padding-top: 0;
   padding-bottom: 0;
   border-top-color: transparent;
-  transition: max-height 500ms ease, opacity 350ms ease, padding 500ms ease, border-color 500ms ease, background-color 500ms ease;
+  /* transition: max-height 500ms ease, opacity 350ms ease, padding 500ms ease, border-color 500ms ease, background-color 500ms ease; */
 }
 
 .transliteration-panel.is-visible {
