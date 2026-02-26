@@ -16,7 +16,7 @@ const languageOptions: LanguageOption[] = [
 
 const getTranslateWsUrl = () => {
   const { hostname } = window.location
-  return `ws://${hostname}:5001/api/ws`
+  return `http://${hostname}:5001/api/ws`
 }
 
 const App = () => {
@@ -93,6 +93,7 @@ const App = () => {
       clearReconnectTimeout()
 
       const socket = new WebSocket(getTranslateWsUrl())
+      console.log("Connecting to websocket at", getTranslateWsUrl())
       socketRef.current = socket
       setIsSocketOpen(false)
 
