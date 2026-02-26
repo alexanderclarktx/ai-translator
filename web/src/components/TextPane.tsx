@@ -7,23 +7,14 @@ type TextPaneProps = {
   ariaLabel: string
   value: string
   footer?: ReactNode
-  readOnly?: boolean
-  autoFocus?: boolean
+  readOnly: boolean
+  autoFocus: boolean
   onChange?: (value: string) => void
-  showHeader?: boolean
+  showHeader: boolean
 }
 
 const TextPane = ({
-  id,
-  title,
-  placeholder,
-  ariaLabel,
-  value,
-  footer,
-  readOnly = false,
-  autoFocus = false,
-  onChange,
-  showHeader = true
+  id, title, placeholder, ariaLabel, value, footer, readOnly, autoFocus, onChange, showHeader
 }: TextPaneProps) => {
   return (
     <section

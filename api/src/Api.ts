@@ -1,51 +1,18 @@
 import {
   formatUptime, TranslateModel, TranslateWsClientMessage
 } from "@template/core"
-import { AnthropicTranslator, OpenAiTranslator } from "@template/api"
-
-type TranslateRequestBody = {
-  text: string
-  targetLanguage: string
-  model?: TranslateModel
-}
-
-const corsHeaders = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "content-type"
-}
-
-const createJsonResponse = (data: unknown, status = 200) => {
-  return Response.json(data, {
-    status,
-    headers: corsHeaders
-  })
-}
-
-const createTextResponse = (text: string, status = 200) => {
-  return new Response(text, {
-    status,
-    headers: corsHeaders
-  })
-}
+import { AnthropicTranslator, httpJson, httpText, OpenAiTranslator } from "@template/api"
 
 const logServerError = (context: string, error: unknown) => {
   if (error instanceof Error) {
     console.error(`[api] ${context}: ${error.message}`)
 
-    if (error.stack) {
-      console.error(error.stack)
-    }
+    if (error.stack) console.error(error.stack)
 
     return
   }
 
   console.error(`[api] ${context}:`, error)
-}
-
-const parseTranslateRequest = async (request: Request) => {
-  const body = (await request.json()) as Partial<TranslateRequestBody>
-  return normalizeTranslateInput(body.text, body.targetLanguage, body.model)
 }
 
 const normalizeTranslateInput = (
@@ -144,11 +111,11 @@ export const createApiServer = () => {
       const url = new URL(request.url)
 
       if (request.method === "OPTIONS") {
-        return createTextResponse("", 204)
+        return httpText("", 204)
       }
 
       if (url.pathname === "/api") {
-        return createJsonResponse({
+        return httpJson({
           status: "ok",
           uptime: formatUptime(process.uptime())
         })
@@ -158,10 +125,10 @@ export const createApiServer = () => {
         const upgraded = serverInstance.upgrade(request)
         if (upgraded) return
 
-        return createTextResponse("WebSocket upgrade failed", 400)
+        return httpText("WebSocket upgrade failed", 400)
       }
 
-      return createTextResponse("Not Found", 404)
+      return httpText("Not Found", 404)
     },
     websocket: {
       open(ws) {

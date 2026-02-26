@@ -1,17 +1,17 @@
 import { TranslateModel, TranslateWsRequestMessage, TranslateWsServerMessage } from "@template/core"
-import { LanguageOption, ModelSwitch, TextPane, TranslateToolbar } from "@template/web"
+import { LanguageOption, TextPane, TranslateToolbar } from "@template/web"
 import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 
 const languageOptions: LanguageOption[] = [
   { label: "English", value: "English" },
   { label: "Chinese", value: "Chinese (simplified)" },
-  // { label: "French", value: "French" },
   { label: "Spanish", value: "Spanish" },
-  // { label: "Italian", value: "Italian" },
   { label: "Japanese", value: "Japanese" },
-  // { label: "Korean", value: "Korean" },
   { label: "Russian", value: "Russian" }
+  // { label: "French", value: "French" },
+  // { label: "Italian", value: "Italian" },
+  // { label: "Korean", value: "Korean" },
 ]
 
 const getTranslateWsUrl = () => {
@@ -277,6 +277,7 @@ const App = () => {
           value={inputText}
           autoFocus
           onChange={setInputText}
+          readOnly={false}
         />
 
         <div aria-hidden="true" style={{ height: "1px", background: "transparent" }} />
@@ -288,6 +289,7 @@ const App = () => {
           placeholder="translation"
           ariaLabel="Translated text"
           value={outputText}
+          autoFocus={false}
           footer={
             outputTransliteration ? (
               <p className="transliteration-text">{outputTransliteration}</p>
