@@ -264,12 +264,12 @@ const App = () => {
 
   return (
     <main>
-      {/* <header>
+      <header>
         <h1>
-          <span>Wordy</span>
-          <img src="/favicon.svg" alt="" aria-hidden="true" className="title-icon" />
+          <span>Piggo Translate</span>
+          {/* <img src="/favicon.svg" alt="" aria-hidden="true" className="title-icon" /> */}
         </h1>
-      </header> */}
+      </header>
 
       {/* <TranslateToolbar
         errorText={errorText}
