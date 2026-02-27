@@ -300,23 +300,20 @@ const getResponseTextFromDoneEvent = (event: OpenAiRealtimeServerEvent) => {
 const buildTranslationPrompt = (text: string, targetLanguage: string) => {
   return (
     `Translate the following text to ${targetLanguage}: ${text}\n` +
-    "Return only a valid JSON array with the shape: [{\"word\":\"...\",\"literal\":\"...\", \"punctuation\":true|false}]\n" +
-    "each \"literal\" is a transliteration in the source language. for chinese, you must use pinyin with tone marks.\n" +
+    "Only return a valid JSON array with this shape: [{\"word\":\"...\",\"literal\":\"...\", \"punctuation\":true|false}]\n" +
+    "Each \"literal\" is a transliteration (pinyin with tone marks for chinese!) in the source language. TRANSLITERATION SHOULD NOT BE THE SAME AS THE INPUT TEXT\n" +
     "For Chinese output, each word must be a complete Chinese word (can be multi-character).\n" +
-    // "Attach punctuation to the nearest word.\n" +
-    "Do not include empty strings.\n" +
-    "Do not include markdown, code fences, or explanations.\n\n"
+    "Do not include empty strings, markdown, code fences, or explanations.\n\n"
   )
 }
 
 const buildDefinitionPrompt = (word: string, targetLanguage: string) => {
   return (
     `Write short English definitions for the word "${word}" (language is ${targetLanguage}).\n` +
-    "Return only valid JSON with exactly this shape:\n" +
-    `{"definition":"..."}\n` +
-    "Keep the definition under 20 words.\n" +
-    "If the word is composed of multiple component words, break down each component.\n" +
-    "Do not include the word itself in the definition.\n" +
+    "Return only valid JSON with exactly this shape: {\"definition\":\"...\"}\n" +
+    "Keep the definition under 30 words.\n" +
+    "If the word is composed of multiple component words, briefly explain each component.\n" +
+    "Do not include the word itself in the definition!!\n" +
     "Do not include markdown or code fences.\n\n"
   )
 }
