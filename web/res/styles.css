@@ -518,8 +518,8 @@ main {
 }
 
 .pane-text-token-selected {
-  background: rgba(60, 60, 60, 0.16);
   border-radius: 0;
+  font-weight: bold;
 }
 
 .pane-text-token-selected-start {
@@ -532,10 +532,6 @@ main {
   border-bottom-right-radius: 0.2rem;
 }
 
-/* .pane-text-token-space { */
-/* cursor: text; */
-/* } */
-
 .pane-footer {
   border-top: 1px solid rgba(16, 24, 32, 0.08);
   padding: 0.65rem 1rem 0.75rem;
@@ -544,19 +540,16 @@ main {
 }
 
 .transliteration-box {
-  /* width: 99%; */
   border: 0;
   background: rgba(183, 221, 255, 0.2);
   color: #3c3519;
   padding: 0;
-  /* cursor: pointer; */
   border-radius: 0.5rem;
   overflow: hidden;
   transition: background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
 }
 
 .transliteration-box:disabled {
-  /* cursor: default; */
   pointer-events: none;
 }
 
