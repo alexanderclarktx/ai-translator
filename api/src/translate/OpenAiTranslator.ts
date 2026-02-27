@@ -301,7 +301,7 @@ const buildTranslationPrompt = (text: string, targetLanguage: string) => {
   return (
     `Translate the following text to ${targetLanguage}: ${text}\n` +
     "Only return a valid JSON array with this shape: [{\"word\":\"...\",\"literal\":\"...\", \"punctuation\":true|false}]\n" +
-    "Each \"literal\" is a transliteration (pinyin with tone marks for chinese!) in the source language. TRANSLITERATION SHOULD NOT BE THE SAME AS THE INPUT TEXT\n" +
+    "Each \"literal\" is a transliteration (pinyin with tone marks for chinese!) OF THE TRANSLATED WORD in the source language.\n" +
     "For Chinese output, each word must be a complete Chinese word (can be multi-character).\n" +
     "Do not include empty strings, markdown, code fences, or explanations.\n\n"
   )
