@@ -7,12 +7,12 @@ import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 
 const languageOptions: LanguageOption[] = [
-  { label: "English", value: "English" },
   { label: "Chinese", value: "Chinese (simplified)" },
   { label: "Spanish", value: "Spanish" },
   { label: "Japanese", value: "Japanese" },
-  { label: "Russian", value: "Russian" }
-  // { label: "French", value: "French" },
+  { label: "Russian", value: "Russian" },
+  { label: "French", value: "French" },
+  { label: "English", value: "English" },
   // { label: "Italian", value: "Italian" },
   // { label: "Korean", value: "Korean" },
 ]
@@ -90,7 +90,7 @@ const App = () => {
     targetLanguage: string
     model: Model
   } | null>(null)
-  const [targetLanguage, setTargetLanguage] = useState(languageOptions[1].value)
+  const [targetLanguage, setTargetLanguage] = useState(languageOptions[0].value)
   const [selectedModel, setSelectedModel] = useState<Model>("openai")
   const [selectedOutputWords, setSelectedOutputWords] = useState<string[]>([])
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([])
