@@ -55,11 +55,11 @@ const getRequestSignature = ({ text, targetLanguage, model }: { text: string, ta
 }
 
 const getDefinitionRequestSignature = (
-  words: string[],
+  word: string,
   targetLanguage: string,
   model: TranslateModel
 ) => {
-  return `${model}::${targetLanguage}::${words.join("\u0000")}`
+  return `${model}::${targetLanguage}::${word}`
 }
 
 const definitionCacheMaxItems = 10
@@ -149,14 +149,14 @@ const App = () => {
     socket.send(JSON.stringify(request))
   }
 
-  const sendDefinitionsRequest = (words: string[]) => {
+  const sendDefinitionsRequest = (word: string) => {
     const socket = socketRef.current
 
-    if (!words.length || !socket || socket.readyState !== WebSocket.OPEN) {
+    if (!word || !socket || socket.readyState !== WebSocket.OPEN) {
       return
     }
 
-    const requestSignature = getDefinitionRequestSignature(words, targetLanguage, selectedModel)
+    const requestSignature = getDefinitionRequestSignature(word, targetLanguage, selectedModel)
 
     if (lastDefinitionRequestSignatureRef.current === requestSignature) {
       return
@@ -171,7 +171,7 @@ const App = () => {
     const request: TranslateWsDefinitionsRequestMessage = {
       type: "translate.definitions.request",
       requestId,
-      words,
+      word,
       targetLanguage,
       model: selectedModel
     }
@@ -189,6 +189,12 @@ const App = () => {
         definition: definitionCacheRef.current[word] || ""
       }))
       .filter((entry) => !!entry.definition)
+  }
+
+  const getMissingDefinitionWords = (words: string[]) => {
+    const uniqueWords = Array.from(new Set(words))
+    const cachedWordSet = new Set(getCachedDefinitions(uniqueWords).map((entry) => entry.word))
+    return uniqueWords.filter((word) => !cachedWordSet.has(word))
   }
 
   const writeDefinitionsToCache = (definitions: TranslateWordDefinition[]) => {
@@ -267,8 +273,15 @@ const App = () => {
           }
 
           writeDefinitionsToCache(message.definitions)
-          setWordDefinitions(getCachedDefinitions(selectedOutputWordsRef.current))
-          setIsDefinitionLoading(false)
+          const selectedWords = selectedOutputWordsRef.current
+          setWordDefinitions(getCachedDefinitions(selectedWords))
+          const missingWords = getMissingDefinitionWords(selectedWords)
+
+          if (missingWords.length) {
+            sendDefinitionsRequest(missingWords[0])
+          } else {
+            setIsDefinitionLoading(false)
+          }
           return
         }
 
@@ -518,8 +531,7 @@ const App = () => {
     const cachedDefinitions = getCachedDefinitions(uniqueWords)
     setWordDefinitions(cachedDefinitions)
 
-    const cachedWordSet = new Set(cachedDefinitions.map((entry) => entry.word))
-    const missingWords = uniqueWords.filter((word) => !cachedWordSet.has(word))
+    const missingWords = getMissingDefinitionWords(uniqueWords)
 
     if (!missingWords.length) {
       setIsDefinitionLoading(false)
@@ -533,7 +545,7 @@ const App = () => {
     }
 
     const timeoutId = window.setTimeout(() => {
-      sendDefinitionsRequest(missingWords)
+      sendDefinitionsRequest(missingWords[0])
     }, 200)
 
     return () => {

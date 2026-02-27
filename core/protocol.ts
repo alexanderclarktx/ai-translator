@@ -16,7 +16,7 @@ type TranslateWordDefinition = {
 type TranslateWsDefinitionsRequestMessage = {
   type: "translate.definitions.request"
   requestId: string
-  words: string[]
+  word: string
   targetLanguage: string
   model?: TranslateModel
 }

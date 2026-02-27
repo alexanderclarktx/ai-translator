@@ -49,7 +49,7 @@ export const OpenAiTranslator = (): Translator => ({
 
     return parseStructuredTranslation(rawText)
   },
-  getDefinitions: async (words, targetLanguage) => {
+  getDefinitions: async (word, targetLanguage) => {
     const apiKey = process.env.OPENAI_API_KEY
 
     if (!apiKey) {
@@ -58,11 +58,11 @@ export const OpenAiTranslator = (): Translator => ({
 
     const rawText = await runOpenAiRealtimeRequest(
       apiKey,
-      buildDefinitionPrompt(words, targetLanguage),
+      buildDefinitionPrompt(word, targetLanguage),
       "You write concise dictionary-style definitions. Return valid JSON only."
     )
 
-    return parseStructuredDefinitions(rawText, words).definitions
+    return parseStructuredDefinitions(rawText, word).definitions
   }
 })
 
@@ -246,6 +246,7 @@ const parseStructuredTranslation = (rawText: string) => {
   try {
     parsed = JSON.parse(jsonCandidate)
   } catch {
+    console.error(jsonCandidate)
     throw new Error("OpenAI returned invalid structured JSON")
   }
 
@@ -314,19 +315,18 @@ const buildTranslationPrompt = (text: string, targetLanguage: string) => {
   )
 }
 
-const buildDefinitionPrompt = (words: string[], targetLanguage: string) => {
+const buildDefinitionPrompt = (word: string, targetLanguage: string) => {
   return (
-    `Write short English definitions for each word in this ${targetLanguage} list.\n` +
+    `Write short English definitions for the word "${word}" (language is ${targetLanguage}).\n` +
     "Return only valid JSON with exactly this shape:\n" +
-    `{"definitions":[{"word":"...","definition":"..."}]}\n` +
-    "Return one entry per input word, in the same order.\n" +
-    "Keep each definition under 20 words.\n" +
-    "Do not include markdown, code fences, or explanations.\n\n" +
-    words.join("\n")
+    `{"definition":"..."}\n` +
+    "Keep the definition under 20 words.\n" +
+    "If the word is composed of multiple parts, break down each part (simply as possible)" +
+    "Do not include markdown or code fences.\n\n"
   )
 }
 
-const parseStructuredDefinitions = (rawText: string, requestedWords: string[]) => {
+const parseStructuredDefinitions = (rawText: string, requestedWord: string) => {
   const trimmed = rawText.trim()
   const jsonCandidate = trimmed
     .replace(/^```(?:json)?\s*/i, "")
@@ -342,8 +342,17 @@ const parseStructuredDefinitions = (rawText: string, requestedWords: string[]) =
   try {
     parsed = JSON.parse(jsonCandidate)
   } catch {
+    console.error(jsonCandidate)
     throw new Error("OpenAI returned invalid structured definitions JSON")
   }
+
+  const parsedDefinitionText =
+    parsed &&
+      typeof parsed === "object" &&
+      "definition" in parsed &&
+      typeof parsed.definition === "string"
+      ? parsed.definition.trim()
+      : ""
 
   const parsedDefinitions =
     parsed &&
@@ -361,17 +370,16 @@ const parseStructuredDefinitions = (rawText: string, requestedWords: string[]) =
     }))
     .filter((value) => !!value.word && !!value.definition)
 
-  if (!normalizedDefinitions.length) {
+  if (!normalizedDefinitions.length && !parsedDefinitionText) {
     throw new Error("OpenAI structured definitions response missing 'definitions'")
   }
 
   const definitionByWord = new Map(normalizedDefinitions.map((item) => [item.word, item.definition]))
-  const definitions = requestedWords
-    .map((word) => ({
-      word,
-      definition: definitionByWord.get(word) || ""
-    }))
-    .filter((item) => !!item.definition)
+  const fallbackDefinition = parsedDefinitionText || definitionByWord.get(requestedWord) || ""
+  const definitions = [{
+    word: requestedWord,
+    definition: fallbackDefinition
+  }].filter((item) => !!item.definition)
 
   return {
     definitions

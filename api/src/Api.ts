@@ -1,7 +1,7 @@
 import {
   TranslateModel
 } from "@template/core"
-import { AnthropicTranslator, httpJson, httpText, OpenAiTranslator } from "@template/api"
+import { httpJson, httpText, OpenAiTranslator } from "@template/api"
 
 const logServerError = (context: string, error: unknown) => {
   if (error instanceof Error) {
@@ -44,7 +44,7 @@ const parseTranslateWsMessage = (
 } | {
   type: "translate.definitions.request"
   requestId: string
-  words: string[]
+  word: string
   targetLanguage: string
   model: TranslateModel
 }) => {
@@ -60,7 +60,7 @@ const parseTranslateWsMessage = (
     text?: unknown
     targetLanguage?: unknown
     model?: unknown
-    words?: unknown
+    word?: unknown
   }
 
   if (
@@ -106,19 +106,13 @@ const parseTranslateWsMessage = (
     }
   }
 
-  const words =
-    Array.isArray(message.words)
-      ? message.words
-        .filter((word): word is string => typeof word === "string")
-        .map((word) => word.trim())
-        .filter(Boolean)
-      : []
+  const word = typeof message.word === "string" ? message.word.trim() : ""
   const normalizedTargetLanguage =
     typeof message.targetLanguage === "string" ? message.targetLanguage.trim() : ""
 
-  if (!words.length) {
+  if (!word) {
     return {
-      error: "Websocket message must include a non-empty 'words' array"
+      error: "Websocket message must include a non-empty 'word' string"
     }
   }
 
@@ -131,7 +125,7 @@ const parseTranslateWsMessage = (
   return {
     type: "translate.definitions.request",
     requestId: message.requestId.trim(),
-    words,
+    word,
     targetLanguage: normalizedTargetLanguage,
     model: message.model === "anthropic" ? "anthropic" : "openai"
   }
@@ -146,19 +140,19 @@ const parseWsJsonMessage = (message: string | Uint8Array | Buffer) => {
 
 export const createApiServer = () => {
 
-  const anthropicTranslator = AnthropicTranslator()
+  // const anthropicTranslator = AnthropicTranslator()
   const openAiTranslator = OpenAiTranslator()
 
   const translateWithModel = async (model: TranslateModel, text: string, targetLanguage: string) => {
-    const translator = model === "anthropic" ? anthropicTranslator : openAiTranslator
+    const translator = model === "anthropic" ? openAiTranslator : openAiTranslator
 
     return translator.translate(text, targetLanguage)
   }
 
-  const getDefinitionsWithModel = async (model: TranslateModel, words: string[], targetLanguage: string) => {
-    const translator = model === "anthropic" ? anthropicTranslator : openAiTranslator
+  const getDefinitionsWithModel = async (model: TranslateModel, word: string, targetLanguage: string) => {
+    const translator = model === "anthropic" ? openAiTranslator : openAiTranslator
 
-    return translator.getDefinitions(words, targetLanguage)
+    return translator.getDefinitions(word, targetLanguage)
   }
 
   const server = Bun.serve({
@@ -247,7 +241,7 @@ export const createApiServer = () => {
         try {
           const definitions = await getDefinitionsWithModel(
             parsedMessage.model,
-            parsedMessage.words,
+            parsedMessage.word,
             parsedMessage.targetLanguage
           )
 

@@ -5,5 +5,5 @@ export type Translator = {
     words: string[]
     transliteration: string[]
   }>
-  getDefinitions: (words: string[], targetLanguage: string) => Promise<TranslateWordDefinition[]>
+  getDefinitions: (word: string, targetLanguage: string) => Promise<TranslateWordDefinition[]>
 }
