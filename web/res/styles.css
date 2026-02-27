@@ -1,6 +1,5 @@
 :root {
   font-family: "Helvetica Neue", Arial, sans-serif;
-  font-size: 1.6rem;
   background-color: #27252b;
   color: #1c2024;
 }
@@ -10,8 +9,9 @@
 }
 
 body {
+  font-size: 1.6rem;
   margin: 0;
-  padding-top: calc(1.6rem + env(safe-area-inset-top));
+  padding-top: calc(2.4rem + env(safe-area-inset-top));
   padding-left: 1rem;
   padding-right: 1rem;
   user-select: none;
@@ -35,7 +35,7 @@ select {
 .header-title {
   font-family: 'Courier New', monospace;
   font-weight: 400;
-  font-size: clamp(1rem, 8vw, 1.3rem);
+  font-size: clamp(1rem, 8vw, 2.1rem);
   text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.5);
   white-space: nowrap;
   margin: 0;
@@ -44,6 +44,13 @@ select {
   color: white;
   transition: color 500ms ease, opacity 500ms ease;
   animation: title-fade-in 500ms ease-out both;
+}
+
+.title-icon {
+  /* justify-self: center; */
+  width: 2.6rem;
+  height: 2.6rem;
+  user-select: none;
 }
 
 @keyframes title-fade-in {
@@ -68,13 +75,6 @@ select {
   }
 }
 
-.title-icon {
-  /* justify-self: center; */
-  width: 1.7rem;
-  height: 1.7rem;
-  user-select: none;
-}
-
 h2 {
   margin: 0;
   font-size: 1rem;
@@ -89,7 +89,7 @@ main {
   position: fixed;
   left: 0.75rem;
   top: 0.5rem;
-  font-size: 0.6rem;
+  font-size: 1rem;
   font-weight: 500;
   font-family: 'Courier New', monospace;
   color: rgba(255, 255, 255, 0.55);
@@ -355,7 +355,7 @@ main {
 
 .pane-definition .pane-textarea {
   text-align: left;
-  font-size: 0.8rem;
+  font-size: 1.2rem;
 }
 
 .pane-header {
@@ -371,7 +371,10 @@ main {
   resize: none;
   border: 0;
   background: transparent;
-  padding: 1rem;
+  padding-left: 1.6rem;
+  padding-right: 1.6rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
   font: inherit;
   color: inherit;
   line-height: 1.45;
@@ -465,7 +468,7 @@ main {
 .transliteration-box {
   width: 100%;
   border: 0;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(183, 221, 255, 0.2);
   color: #3c3519;
   padding: 0;
   /* cursor: pointer; */
@@ -489,13 +492,12 @@ main {
 }
 
 .transliteration-box:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(183, 221, 255, 0.06);
   /* cursor: initial; */
 }
 
 .transliteration-collapsed-label {
   display: block;
-  font-size: 0.84rem;
   min-height: 0;
   max-height: 0;
   opacity: 0;
@@ -514,7 +516,7 @@ main {
 .transliteration-text {
   margin: 0;
   color: #3c3519;
-  font-size: 0.92rem;
+  font-size: 1.4rem;
   line-height: 1.35;
   min-width: 0;
   white-space: normal;
@@ -589,19 +591,7 @@ main {
 }
 
 @media (max-width: 800px) {
-  /* h1 {
-    word-spacing: 0;
-  } */
-
-  /* body {
-    padding: 1rem;
+  body {
+    font-size: 0.8rem;
   }
-
-  #app {
-    padding: 1rem;
-  } */
-
-  /* .language-bubble { */
-  /* font-size: clamp(0.6rem, 2.8vw, 0.9rem); */
-  /* } */
 }
