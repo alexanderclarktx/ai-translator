@@ -23,10 +23,10 @@ body {
   box-shadow: 0 10px 30px rgba(16, 24, 32, 0.12);
 }
 
-h1 {
+.header-title {
   font-family: 'Courier New', monospace;
   font-weight: 400;
-  font-size: 1.3rem;
+  font-size: clamp(1rem, 8vw, 1.3rem);
   text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.5);
   white-space: nowrap;
   margin: 0;
@@ -74,6 +74,7 @@ h2 {
 main {
   display: grid;
   gap: 0.5rem;
+  align-items: center;
 }
 
 .app-version {

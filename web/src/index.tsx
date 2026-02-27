@@ -149,6 +149,7 @@ const App = () => {
       window.removeEventListener("resize", updatePaneStackMarginTop)
     }
   }, [])
+
   const normalizedInputText = normalizeText(inputText)
   const hasInputText = !!normalizedInputText
   const hasOutputWords = outputWords.length > 0
@@ -404,14 +405,10 @@ const App = () => {
         gap: "0.5rem",
         marginBottom: "1rem",
         flexDirection: "column",
-        // position: "fixed",
-        left: "50%",
-        // transform: "translate(-50%)"
+        left: "50%"
       }}>
         <img src="piggo.svg" alt="" aria-hidden="true" className="title-icon fade-in" />
-        <h1>
-          Piggo Translate
-        </h1>
+        <p className="header-title">Piggo Translate</p>
       </section>
 
       {/* <TranslateToolbar
