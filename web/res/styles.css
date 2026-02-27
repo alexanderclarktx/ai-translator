@@ -289,6 +289,7 @@ main {
   align-self: flex-end;
   display: flex;
   position: relative;
+  align-items: center;
 }
 
 .input-pane-target-language {
@@ -307,6 +308,7 @@ main {
   /* margin-: 0; */
   /* padding-right: 2px; */
   padding: 0;
+  z-index: 2;
   transition: background-color 200ms ease, border-color 200ms ease;
 }
 
@@ -317,23 +319,25 @@ main {
 
 .input-pane-target-language-dropdown {
   position: absolute;
-  top: calc(100% + 0.25rem);
-  z-index: 5;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 1;
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  right: -7px;
-  min-width: 100%;
-  padding: 0.5rem;
+  flex-direction: row;
+  gap: 0.55rem;
+  min-width: max-content;
+  padding: 0 0.55rem 0 0;
   margin: 0;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 10px;
-  background: rgba(39, 37, 43, 0.8);
-  overflow: hidden;
-  z-index: 999;
 }
 
 .input-pane-target-language-option {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(0.9rem) scale(0.96);
   border: none;
   background: transparent;
   text-align: right;
@@ -344,10 +348,26 @@ main {
   text-align: center;
   padding: 0;
   margin: 0;
+  white-space: nowrap;
+  transition: transform 220ms ease, opacity 220ms ease, font-weight 120ms ease;
 }
 
 .input-pane-target-language-option:hover {
   font-weight: 600;
+}
+
+.input-pane-language-menu:hover .input-pane-target-language-dropdown,
+.input-pane-language-menu:focus-within .input-pane-target-language-dropdown {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.input-pane-language-menu:hover .input-pane-target-language-option,
+.input-pane-language-menu:focus-within .input-pane-target-language-option {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
 }
 
 .pane {
