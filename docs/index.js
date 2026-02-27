@@ -17111,6 +17111,32 @@ var textPaneAnimationFastThreshold = 24;
 var selectableOutputTokenPattern = /[\p{Script=Han}]|[^\s\p{Script=Han}]+|\s+/gu;
 var selectionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu;
 var getSelectionWord = (value) => value.replace(selectionWordStripPattern, "");
+var copyTextToClipboard = async (value) => {
+  if (!value) {
+    return false;
+  }
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {}
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.setAttribute("readonly", "true");
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return copied;
+  } catch {
+    document.body.removeChild(textarea);
+    return false;
+  }
+};
 var getSharedPrefixLength = (left, right) => {
   const maxLength = Math.min(left.length, right.length);
   let index = 0;
@@ -17196,10 +17222,13 @@ var TextPane = ({
   showHeader,
   textareaRef,
   enableTokenSelection,
+  enableContentSelection,
   animateOnMount,
   selectionWords,
   selectionTokens,
-  selectionWordJoiner = " "
+  selectionWordJoiner = " ",
+  enableCopyButton,
+  copyValue
 }) => {
   const localTextareaRef = import_react.useRef(null);
   const textContentRef = import_react.useRef(null);
@@ -17229,7 +17258,12 @@ var TextPane = ({
     };
   });
   const selectableTokens = shouldUseSelectionTokens ? getAnimatedSelectableTokens(staticSelectableTokens, text, shouldUseWordJoiner, selectionWordJoiner) : staticSelectableTokens;
-  const shouldRenderSelectableOutput = !!enableTokenSelection;
+  const shouldRenderTokenizedOutput = !!enableTokenSelection;
+  const shouldRenderSelectableOutput = shouldRenderTokenizedOutput || !!enableContentSelection;
+  const [didCopy, setDidCopy] = import_react.useState(false);
+  const copyFeedbackTimeoutRef = import_react.useRef(null);
+  const [isCopySelected, setIsCopySelected] = import_react.useState(false);
+  const copySelectedTimeoutRef = import_react.useRef(null);
   import_react.useEffect(() => {
     if (shouldAnimateOnMountRef.current) {
       shouldAnimateOnMountRef.current = false;
@@ -17274,7 +17308,7 @@ var TextPane = ({
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [shouldRenderSelectableOutput, text]);
   import_react.useEffect(() => {
-    if (!shouldRenderSelectableOutput || !onSelectionChange) {
+    if (!shouldRenderTokenizedOutput || !onSelectionChange) {
       return;
     }
     const getTokenElementFromNode = (node) => {
@@ -17367,7 +17401,7 @@ var TextPane = ({
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [onSelectionChange, shouldRenderSelectableOutput]);
+  }, [onSelectionChange, shouldRenderTokenizedOutput]);
   const selectToken = (tokenElement) => {
     const selection = window.getSelection();
     if (!selection) {
@@ -17405,6 +17439,16 @@ var TextPane = ({
     }
     clearSelectableOutputSelection();
   }, [shouldRenderSelectableOutput, value]);
+  import_react.useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+      if (copySelectedTimeoutRef.current) {
+        window.clearTimeout(copySelectedTimeoutRef.current);
+      }
+    };
+  }, []);
   return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("section", {
     className: paneClassName,
     "aria-labelledby": showHeader ? id : undefined,
@@ -17422,14 +17466,14 @@ var TextPane = ({
         className: "pane-text-content pane-text-content-selectable",
         role: "textbox",
         "aria-label": ariaLabel,
-        onMouseDown: (event) => {
+        onMouseDown: shouldRenderTokenizedOutput ? (event) => {
           const tokenElement = event.target.closest(".pane-text-token");
           const isWordToken = !!tokenElement && !!tokenElement.dataset.selectionWord;
           if (!isWordToken) {
             clearSelectableOutputSelection();
           }
-        },
-        children: selectableTokens.map((token, tokenIndex) => {
+        } : undefined,
+        children: shouldRenderTokenizedOutput ? selectableTokens.map((token, tokenIndex) => {
           const tokenValue = token.value;
           const isWhitespaceToken = !tokenValue.trim();
           const selectionWord = token.selectionWord ?? getSelectionWord(tokenValue);
@@ -17456,7 +17500,7 @@ var TextPane = ({
               shouldUseWordJoiner && tokenIndex < selectableTokens.length - 1 ? selectionWordJoiner : null
             ]
           }, `${tokenValue}-${tokenIndex}`, true, undefined, this);
-        })
+        }) : text
       }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("textarea", {
         ref: (node) => {
           localTextareaRef.current = node;
@@ -17483,7 +17527,48 @@ var TextPane = ({
         }
       }, undefined, false, undefined, this),
       afterTextarea,
-      footer ? footer : null
+      footer ? footer : null,
+      enableCopyButton ? /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("button", {
+        type: "button",
+        className: `pane-copy-button${didCopy ? " pane-copy-button-copied" : ""}${isCopySelected ? " pane-copy-button-selected" : ""}`,
+        "aria-label": "Copy output text",
+        title: didCopy ? "Copied" : "Copy",
+        onMouseDown: (event) => {
+          event.preventDefault();
+        },
+        onClick: async () => {
+          const copied = await copyTextToClipboard(copyValue ?? value);
+          if (!copied) {
+            return;
+          }
+          setDidCopy(true);
+          setIsCopySelected(true);
+          if (copySelectedTimeoutRef.current) {
+            window.clearTimeout(copySelectedTimeoutRef.current);
+          }
+          copySelectedTimeoutRef.current = window.setTimeout(() => {
+            setIsCopySelected(false);
+          }, 200);
+          if (copyFeedbackTimeoutRef.current) {
+            window.clearTimeout(copyFeedbackTimeoutRef.current);
+          }
+          copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+            setDidCopy(false);
+          }, 1000);
+        },
+        children: /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("svg", {
+          viewBox: "0 0 24 24",
+          "aria-hidden": "true",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("path", {
+              d: "M8 8h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("path", {
+              d: "M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      }, undefined, false, undefined, this) : null
     ]
   }, undefined, true, undefined, this);
 };
@@ -18244,6 +18329,8 @@ var App = () => {
             }, undefined, false, undefined, this),
             readOnly: true,
             enableTokenSelection: true,
+            enableCopyButton: true,
+            copyValue: joinOutputTokens(outputWords, targetLanguage, "word"),
             onSelectionChange: (selectionWords) => {
               setSelectedOutputWords(selectionWords);
             }
@@ -18263,7 +18350,8 @@ var App = () => {
               ariaLabel: `Definition for ${word}`,
               value: paneValue,
               autoFocus: false,
-              readOnly: true
+              readOnly: true,
+              enableContentSelection: true
             }, `${word}-${index}`, false, undefined, this);
           })
         ]
