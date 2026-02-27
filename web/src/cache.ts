@@ -2,10 +2,10 @@ import { WordDefinition } from "@template/core"
 
 const definitionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu
 
-export const normalizeDefinitionWord = (word: string) => word.replace(definitionWordStripPattern, "")
+export const normalizeDefinition = (word: string) => word.replace(definitionWordStripPattern, "")
 
 const getUniqueDefinitionWords = (words: string[]) =>
-  Array.from(new Set(words.map((word) => normalizeDefinitionWord(word)).filter(Boolean)))
+  Array.from(new Set(words.map((word) => normalizeDefinition(word)).filter(Boolean)))
 
 export type DefinitionCache = {
   getCachedDefinitions: (words: string[]) => WordDefinition[]
@@ -36,7 +36,7 @@ export const DefinitionCache = (maxItems = 10): DefinitionCache => {
 
   const writeDefinitionsToCache = (definitions: WordDefinition[]) => {
     definitions.forEach(({ word, definition }) => {
-      const normalizedWord = normalizeDefinitionWord(word)
+      const normalizedWord = normalizeDefinition(word)
 
       if (!normalizedWord || !definition) {
         return

@@ -17590,8 +17590,8 @@ var getTranslateWsUrl = () => {
 };
 var normalizeText = (text) => text.replace(/\s+/g, " ").trim();
 var definitionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu;
-var normalizeDefinitionWord = (word) => word.replace(definitionWordStripPattern, "");
-var getUniqueDefinitionWords = (words) => Array.from(new Set(words.map((word) => normalizeDefinitionWord(word)).filter(Boolean)));
+var normalizeDefinition = (word) => word.replace(definitionWordStripPattern, "");
+var getUniqueDefinitionWords = (words) => Array.from(new Set(words.map((word) => normalizeDefinition(word)).filter(Boolean)));
 var isSpaceSeparatedLanguage = (language) => !language.toLowerCase().includes("chinese") && !language.toLowerCase().includes("japanese");
 var noSpaceBeforePunctuationPattern = /^[.,!?;:%)\]\}»”’、。，！？；：]$/;
 var noSpaceAfterPunctuationPattern = /^[(\[{«“‘]$/;
@@ -17633,7 +17633,7 @@ var getRequestSignature = ({ text, targetLanguage, model }) => {
   return `${model}::${normalizedText}::${targetLanguage}`;
 };
 var getDefinitionRequestSignature = (word, targetLanguage, model) => {
-  return `${model}::${targetLanguage}::${normalizeDefinitionWord(word)}`;
+  return `${model}::${targetLanguage}::${normalizeDefinition(word)}`;
 };
 var definitionCacheMaxItems = 10;
 var App = () => {
@@ -17699,7 +17699,7 @@ var App = () => {
   };
   const sendDefinitionsRequest = (word) => {
     const socket = socketRef.current;
-    const normalizedWord = normalizeDefinitionWord(word);
+    const normalizedWord = normalizeDefinition(word);
     if (!normalizedWord || !socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
@@ -17735,7 +17735,7 @@ var App = () => {
   };
   const writeDefinitionsToCache = (definitions) => {
     definitions.forEach(({ word, definition }) => {
-      const normalizedWord = normalizeDefinitionWord(word);
+      const normalizedWord = normalizeDefinition(word);
       if (!normalizedWord || !definition) {
         return;
       }
@@ -18007,10 +18007,10 @@ var App = () => {
       window.clearTimeout(timeoutId);
     };
   }, [selectedOutputWords, isSocketOpen, selectedModel, targetLanguage]);
-  const definitionByWord = new Map(wordDefinitions.map((entry) => [normalizeDefinitionWord(entry.word), entry.definition]));
+  const definitionByWord = new Map(wordDefinitions.map((entry) => [normalizeDefinition(entry.word), entry.definition]));
   const transliterationByWord = new Map;
   outputWords.filter(({ punctuation }) => !punctuation).forEach(({ word, literal }) => {
-    const normalizedWord = normalizeDefinitionWord(word);
+    const normalizedWord = normalizeDefinition(word);
     const transliterationKey = normalizedWord || word;
     if (transliterationByWord.has(transliterationKey)) {
       return;
@@ -18082,7 +18082,7 @@ var App = () => {
             }
           }, undefined, false, undefined, this) : null,
           selectedOutputWords.map((word, index) => {
-            const normalizedWord = normalizeDefinitionWord(word);
+            const normalizedWord = normalizeDefinition(word);
             const definition = definitionByWord.get(normalizedWord) || "";
             const transliteration = transliterationByWord.get(normalizedWord || word) || "";
             const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word;

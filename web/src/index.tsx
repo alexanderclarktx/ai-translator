@@ -1,6 +1,7 @@
 import {
   LanguageOption, TextPane, Transliteration, DefinitionCache,
-  normalizeDefinitionWord, Client, ClientApi, RequestSnapshot
+  normalizeDefinition, Client, ClientApi, RequestSnapshot, isLocal,
+  isMobile
 } from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
 import { useEffect, useRef, useState } from "react"
@@ -378,14 +379,14 @@ const App = () => {
   }, [selectedOutputWords, isSocketOpen, selectedModel, targetLanguage])
 
   const definitionByWord = new Map(
-    wordDefinitions.map((entry) => [normalizeDefinitionWord(entry.word), entry.definition])
+    wordDefinitions.map((entry) => [normalizeDefinition(entry.word), entry.definition])
   )
   const transliterationByWord = new Map<string, string>()
 
   outputWords
     .filter(({ punctuation }) => !punctuation)
     .forEach(({ word, literal }) => {
-      const normalizedWord = normalizeDefinitionWord(word)
+      const normalizedWord = normalizeDefinition(word)
       const transliterationKey = normalizedWord || word
 
       if (transliterationByWord.has(transliterationKey)) {
@@ -474,7 +475,7 @@ const App = () => {
         ) : null}
 
         {selectedOutputWords.map((word, index) => {
-          const normalizedWord = normalizeDefinitionWord(word)
+          const normalizedWord = normalizeDefinition(word)
           const definition = definitionByWord.get(normalizedWord) || ""
           const transliteration = transliterationByWord.get(normalizedWord || word) || ""
           const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word
@@ -506,9 +507,11 @@ const App = () => {
         />
       </div> */}
 
-      <span className="app-version" aria-label="App version">
-        v0.1.5
-      </span>
+      {isLocal() && !isMobile() && (
+        <span className="app-version" aria-label="App version">
+          v0.1.5
+        </span>
+      )}
     </main>
   )
 }

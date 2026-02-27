@@ -1,5 +1,5 @@
 import { Model, WsDefinitionsRequest, WsRequest, WsServerMessage, WordDefinition, WordToken } from "@template/core"
-import { normalizeDefinitionWord } from "@template/web"
+import { isLocal, normalizeDefinition } from "@template/web"
 
 export type RequestSnapshot = {
   id: string
@@ -43,8 +43,7 @@ export type ClientApi = {
 const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim()
 
 const getTranslateWsUrl = () => {
-  const { hostname } = window.location
-  return hostname === "localhost" ? "http://localhost:5001/api/ws" : "https://piggo-translate-production.up.railway.app/api/ws"
+  return isLocal() ? "http://localhost:5001/api/ws" : "https://piggo-translate-production.up.railway.app/api/ws"
 }
 
 const getRequestSignature = ({ text, targetLanguage, model }: { text: string, targetLanguage: string, model: Model }) => {
@@ -52,7 +51,7 @@ const getRequestSignature = ({ text, targetLanguage, model }: { text: string, ta
 }
 
 const getDefinitionRequestSignature = (word: string, targetLanguage: string, model: Model) => {
-  return `${model}::${targetLanguage}::${normalizeDefinitionWord(word)}`
+  return `${model}::${targetLanguage}::${normalizeDefinition(word)}`
 }
 
 export const Client = (options: ClientOptions): ClientApi => {
@@ -126,7 +125,7 @@ export const Client = (options: ClientOptions): ClientApi => {
   }
 
   const sendDefinitionsRequest = (requestInput: DefinitionsRequestInput) => {
-    const normalizedWord = normalizeDefinitionWord(requestInput.word)
+    const normalizedWord = normalizeDefinition(requestInput.word)
 
     if (!normalizedWord || !socket || socket.readyState !== WebSocket.OPEN) {
       return
