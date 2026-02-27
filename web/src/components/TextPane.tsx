@@ -41,6 +41,86 @@ const getDynamicIntervalDuration = (currentText: string, desiredText: string) =>
   return result
 }
 
+const buildSelectableDisplayText = (
+  tokens: {
+    value: string
+  }[],
+  shouldUseWordJoiner: boolean,
+  selectionWordJoiner: string
+) => {
+  if (!tokens.length) {
+    return ""
+  }
+
+  return tokens.reduce((result, token, tokenIndex) => {
+    const joiner =
+      shouldUseWordJoiner && tokenIndex < tokens.length - 1 ? selectionWordJoiner : ""
+    return `${result}${token.value}${joiner}`
+  }, "")
+}
+
+const getAnimatedSelectableTokens = (
+  targetTokens: {
+    value: string
+    selectionWord?: string
+    selectable?: boolean
+  }[],
+  animatedText: string,
+  shouldUseWordJoiner: boolean,
+  selectionWordJoiner: string
+) => {
+  if (!targetTokens.length || !animatedText) {
+    return []
+  }
+
+  let remainingText = animatedText
+
+  const nextTokens = targetTokens.flatMap((token, tokenIndex) => {
+    if (!remainingText) {
+      return []
+    }
+
+    const visibleTokenValue = remainingText.slice(0, token.value.length)
+    remainingText = remainingText.slice(visibleTokenValue.length)
+    const tokenEntries: {
+      value: string
+      selectionWord?: string
+      selectable?: boolean
+    }[] = []
+    const isTokenFullyVisible = visibleTokenValue.length === token.value.length
+
+    if (visibleTokenValue) {
+      tokenEntries.push({
+        value: visibleTokenValue,
+        selectionWord: isTokenFullyVisible ? token.selectionWord : "",
+        selectable: isTokenFullyVisible ? token.selectable : false
+      })
+    }
+
+    const shouldAppendJoiner =
+      shouldUseWordJoiner &&
+      tokenIndex < targetTokens.length - 1 &&
+      !!selectionWordJoiner
+
+    if (shouldAppendJoiner && remainingText) {
+      const visibleJoinerValue = remainingText.slice(0, selectionWordJoiner.length)
+
+      if (visibleJoinerValue) {
+        tokenEntries.push({
+          value: visibleJoinerValue,
+          selectionWord: "",
+          selectable: false
+        })
+        remainingText = remainingText.slice(visibleJoinerValue.length)
+      }
+    }
+
+    return tokenEntries
+  })
+
+  return nextTokens
+}
+
 type TextPaneProps = {
   id: string
   title: string
@@ -90,7 +170,11 @@ const TextPane = ({
         : []
   const shouldUseSelectionTokens =
     normalizedSelectionTokens.length > 0
-  const selectableTokens = shouldUseSelectionTokens
+  const shouldUseWordJoiner = shouldUseSelectionTokens && normalizedSelectionTokens.length > 1
+  const selectableTextTarget = shouldUseSelectionTokens
+    ? buildSelectableDisplayText(normalizedSelectionTokens, shouldUseWordJoiner, selectionWordJoiner)
+    : value
+  const staticSelectableTokens = shouldUseSelectionTokens
     ? normalizedSelectionTokens
     : (text.match(selectableOutputTokenPattern) ?? []).map((token) => {
       const selectionWord = getSelectionWord(token)
@@ -100,16 +184,23 @@ const TextPane = ({
         selectable: !!selectionWord
       }
     })
-  const shouldUseWordJoiner = shouldUseSelectionTokens && normalizedSelectionTokens.length > 1
+  const selectableTokens = shouldUseSelectionTokens
+    ? getAnimatedSelectableTokens(
+      staticSelectableTokens,
+      text,
+      shouldUseWordJoiner,
+      selectionWordJoiner
+    )
+    : staticSelectableTokens
   const shouldRenderSelectableOutput = !!enableTokenSelection
 
   useEffect(() => {
-    setDesiredText(value)
+    setDesiredText(selectableTextTarget)
 
     // if (!readOnly) {
     //   setText(value)
     // }
-  }, [readOnly, value])
+  }, [readOnly, selectableTextTarget])
 
   useEffect(() => {
     if (!desiredText) {
