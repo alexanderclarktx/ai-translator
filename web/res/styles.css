@@ -362,6 +362,7 @@ main {
 .input-pane-language-menu:focus-within .input-pane-target-language-dropdown {
   visibility: visible;
   pointer-events: auto;
+  border: 1px solid green;
 }
 
 .input-pane-language-menu:hover .input-pane-target-language-option,

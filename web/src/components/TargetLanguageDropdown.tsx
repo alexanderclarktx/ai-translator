@@ -18,7 +18,8 @@ const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: TargetLan
     <section
       className={`input-pane-language-menu${isDismissed ? " input-pane-language-menu-dismissed" : ""}`}
       aria-label="Target language selector"
-      onMouseLeave={() => {
+      onMouseLeave={(x) => {
+        console.log("leave", x)
         setIsDismissed(true)
       }}
     >
