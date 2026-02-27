@@ -17100,19 +17100,43 @@ var require_client = __commonJS((exports, module) => {
   }
 });
 
-// src/components/LanguagePicker.tsx
-var jsx_dev_runtime = __toESM(require_jsx_dev_runtime(), 1);
 // src/components/ModelSwitch.tsx
-var jsx_dev_runtime2 = __toESM(require_jsx_dev_runtime(), 1);
+var jsx_dev_runtime = __toESM(require_jsx_dev_runtime(), 1);
 // src/components/TextPane.tsx
 var import_react = __toESM(require_react(), 1);
-var jsx_dev_runtime3 = __toESM(require_jsx_dev_runtime(), 1);
+var jsx_dev_runtime2 = __toESM(require_jsx_dev_runtime(), 1);
 var textPaneAnimationMinIntervalMs = 15;
 var textPaneAnimationMaxIntervalMs = 100;
 var textPaneAnimationFastThreshold = 24;
 var selectableOutputTokenPattern = /[\p{Script=Han}]|[^\s\p{Script=Han}]+|\s+/gu;
 var selectionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu;
 var getSelectionWord = (value) => value.replace(selectionWordStripPattern, "");
+var copyTextToClipboard = async (value) => {
+  if (!value) {
+    return false;
+  }
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {}
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.setAttribute("readonly", "true");
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return copied;
+  } catch {
+    document.body.removeChild(textarea);
+    return false;
+  }
+};
 var getSharedPrefixLength = (left, right) => {
   const maxLength = Math.min(left.length, right.length);
   let index = 0;
@@ -17198,10 +17222,13 @@ var TextPane = ({
   showHeader,
   textareaRef,
   enableTokenSelection,
+  enableContentSelection,
   animateOnMount,
   selectionWords,
   selectionTokens,
-  selectionWordJoiner = " "
+  selectionWordJoiner = " ",
+  enableCopyButton,
+  copyValue
 }) => {
   const localTextareaRef = import_react.useRef(null);
   const textContentRef = import_react.useRef(null);
@@ -17210,7 +17237,7 @@ var TextPane = ({
   const initialText = shouldAnimateOnMountRef.current ? "" : value;
   const [text, setText] = import_react.useState(initialText);
   const [desiredText, setDesiredText] = import_react.useState(value);
-  const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ");
+  const paneClassName = [showHeader ? "pane" : "pane", className].filter(Boolean).join(" ");
   const normalizedSelectionTokens = selectionTokens && selectionTokens.length ? selectionTokens : selectionWords && selectionWords.length ? selectionWords.map((value2) => {
     const selectionWord = getSelectionWord(value2);
     return {
@@ -17231,7 +17258,12 @@ var TextPane = ({
     };
   });
   const selectableTokens = shouldUseSelectionTokens ? getAnimatedSelectableTokens(staticSelectableTokens, text, shouldUseWordJoiner, selectionWordJoiner) : staticSelectableTokens;
-  const shouldRenderSelectableOutput = !!enableTokenSelection;
+  const shouldRenderTokenizedOutput = !!enableTokenSelection;
+  const shouldRenderSelectableOutput = shouldRenderTokenizedOutput || !!enableContentSelection;
+  const [didCopy, setDidCopy] = import_react.useState(false);
+  const copyFeedbackTimeoutRef = import_react.useRef(null);
+  const [isCopySelected, setIsCopySelected] = import_react.useState(false);
+  const copySelectedTimeoutRef = import_react.useRef(null);
   import_react.useEffect(() => {
     if (shouldAnimateOnMountRef.current) {
       shouldAnimateOnMountRef.current = false;
@@ -17276,7 +17308,7 @@ var TextPane = ({
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [shouldRenderSelectableOutput, text]);
   import_react.useEffect(() => {
-    if (!shouldRenderSelectableOutput || !onSelectionChange) {
+    if (!shouldRenderTokenizedOutput || !onSelectionChange) {
       return;
     }
     const getTokenElementFromNode = (node) => {
@@ -17369,7 +17401,7 @@ var TextPane = ({
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [onSelectionChange, shouldRenderSelectableOutput]);
+  }, [onSelectionChange, shouldRenderTokenizedOutput]);
   const selectToken = (tokenElement) => {
     const selection = window.getSelection();
     if (!selection) {
@@ -17407,31 +17439,41 @@ var TextPane = ({
     }
     clearSelectableOutputSelection();
   }, [shouldRenderSelectableOutput, value]);
-  return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("section", {
+  import_react.useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+      if (copySelectedTimeoutRef.current) {
+        window.clearTimeout(copySelectedTimeoutRef.current);
+      }
+    };
+  }, []);
+  return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("section", {
     className: paneClassName,
     "aria-labelledby": showHeader ? id : undefined,
     "aria-label": showHeader ? undefined : ariaLabel,
     children: [
-      showHeader ? /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("div", {
+      showHeader ? /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
         className: "pane-header",
-        children: /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("h2", {
+        children: /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("h2", {
           id,
           children: title
         }, undefined, false, undefined, this)
       }, undefined, false, undefined, this) : null,
-      shouldRenderSelectableOutput ? /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("div", {
+      shouldRenderSelectableOutput ? /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
         ref: textContentRef,
         className: "pane-text-content pane-text-content-selectable",
         role: "textbox",
         "aria-label": ariaLabel,
-        onMouseDown: (event) => {
+        onMouseDown: shouldRenderTokenizedOutput ? (event) => {
           const tokenElement = event.target.closest(".pane-text-token");
           const isWordToken = !!tokenElement && !!tokenElement.dataset.selectionWord;
           if (!isWordToken) {
             clearSelectableOutputSelection();
           }
-        },
-        children: selectableTokens.map((token, tokenIndex) => {
+        } : undefined,
+        children: shouldRenderTokenizedOutput ? selectableTokens.map((token, tokenIndex) => {
           const tokenValue = token.value;
           const isWhitespaceToken = !tokenValue.trim();
           const selectionWord = token.selectionWord ?? getSelectionWord(tokenValue);
@@ -17441,9 +17483,9 @@ var TextPane = ({
             isWhitespaceToken ? "pane-text-token-space" : "",
             isSelectableToken ? "pane-text-token-selectable" : "pane-text-token-nonselectable"
           ].filter(Boolean).join(" ");
-          return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("span", {
+          return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
             children: [
-              /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("span", {
+              /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
                 className: tokenClassName,
                 "data-selection-word": isSelectableToken ? selectionWord : "",
                 onMouseDown: (event) => {
@@ -17458,8 +17500,8 @@ var TextPane = ({
               shouldUseWordJoiner && tokenIndex < selectableTokens.length - 1 ? selectionWordJoiner : null
             ]
           }, `${tokenValue}-${tokenIndex}`, true, undefined, this);
-        })
-      }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("textarea", {
+        }) : text
+      }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("textarea", {
         ref: (node) => {
           localTextareaRef.current = node;
           if (textareaRef) {
@@ -17485,12 +17527,104 @@ var TextPane = ({
         }
       }, undefined, false, undefined, this),
       afterTextarea,
-      footer ? footer : null
+      footer ? footer : null,
+      enableCopyButton ? /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("button", {
+        type: "button",
+        className: `pane-copy-button${didCopy ? " pane-copy-button-copied" : ""}${isCopySelected ? " pane-copy-button-selected" : ""}`,
+        "aria-label": "Copy output text",
+        title: didCopy ? "Copied" : "Copy",
+        onMouseDown: (event) => {
+          event.preventDefault();
+        },
+        onClick: async () => {
+          const copied = await copyTextToClipboard(copyValue ?? value);
+          if (!copied) {
+            return;
+          }
+          setDidCopy(true);
+          setIsCopySelected(true);
+          if (copySelectedTimeoutRef.current) {
+            window.clearTimeout(copySelectedTimeoutRef.current);
+          }
+          copySelectedTimeoutRef.current = window.setTimeout(() => {
+            setIsCopySelected(false);
+          }, 200);
+          if (copyFeedbackTimeoutRef.current) {
+            window.clearTimeout(copyFeedbackTimeoutRef.current);
+          }
+          copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+            setDidCopy(false);
+          }, 1000);
+        },
+        children: /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("svg", {
+          viewBox: "0 0 24 24",
+          "aria-hidden": "true",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("path", {
+              d: "M8 8h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("path", {
+              d: "M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      }, undefined, false, undefined, this) : null
+    ]
+  }, undefined, true, undefined, this);
+};
+// src/components/TargetLanguageDropdown.tsx
+var import_react2 = __toESM(require_react(), 1);
+var jsx_dev_runtime3 = __toESM(require_jsx_dev_runtime(), 1);
+var TargetLanguageDropdown = ({ options, targetLanguage, onSelect }) => {
+  const selectedLanguageLabel = options.find((option) => option.value === targetLanguage)?.label || targetLanguage;
+  const unselectedOptions = options.filter((option) => option.value !== targetLanguage);
+  const [isDismissed, setIsDismissed] = import_react2.useState(true);
+  return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("section", {
+    className: `input-pane-language-menu${isDismissed ? " input-pane-language-menu-dismissed" : ""}`,
+    "aria-label": "Target language selector",
+    onPointerLeave: (x) => {
+      if (isMobile())
+        return;
+      setIsDismissed(true);
+    },
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("button", {
+        type: "button",
+        className: "input-pane-target-language fade-in",
+        onPointerEnter: () => {
+          if (isMobile())
+            return;
+          setIsDismissed(false);
+        },
+        onPointerDown: () => {
+          setIsDismissed(!isDismissed);
+        },
+        children: selectedLanguageLabel
+      }, undefined, false, undefined, this),
+      /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("div", {
+        className: "input-pane-target-language-dropdown",
+        role: "listbox",
+        "aria-label": "Select target language",
+        children: unselectedOptions.map((option) => {
+          return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("button", {
+            type: "button",
+            role: "option",
+            "aria-selected": false,
+            className: "input-pane-target-language-option",
+            "data-selected": "false",
+            onClick: () => {
+              setIsDismissed(true);
+              onSelect(option.value);
+            },
+            children: option.label
+          }, option.value, false, undefined, this);
+        })
+      }, undefined, false, undefined, this)
     ]
   }, undefined, true, undefined, this);
 };
 // src/components/Transliteration.tsx
-var import_react2 = __toESM(require_react(), 1);
+var import_react3 = __toESM(require_react(), 1);
 var jsx_dev_runtime4 = __toESM(require_jsx_dev_runtime(), 1);
 var transliterationAnimationMinIntervalMs = 15;
 var transliterationAnimationMaxIntervalMs = 55;
@@ -17519,19 +17653,19 @@ var getDynamicIntervalDuration2 = (currentText, desiredText) => {
   return Math.round(transliterationAnimationMaxIntervalMs - intervalRange * clampedProgress);
 };
 var Transliteration = ({ value, isVisible, onToggle }) => {
-  const [text, setText] = import_react2.useState("");
-  const [desiredText, setDesiredText] = import_react2.useState(value);
+  const [text, setText] = import_react3.useState("");
+  const [desiredText, setDesiredText] = import_react3.useState(value);
   const hasValue = Boolean(value);
   const isExpanded = hasValue && isVisible;
-  import_react2.useEffect(() => {
+  import_react3.useEffect(() => {
     setDesiredText(value);
   }, [value]);
-  import_react2.useEffect(() => {
+  import_react3.useEffect(() => {
     if (!desiredText) {
       setText("");
     }
   }, [desiredText]);
-  import_react2.useEffect(() => {
+  import_react3.useEffect(() => {
     if (text === desiredText) {
       return;
     }
@@ -17571,8 +17705,6 @@ var Transliteration = ({ value, isVisible, onToggle }) => {
     ]
   }, undefined, true, undefined, this);
 };
-// src/components/TranslateToolbar.tsx
-var jsx_dev_runtime5 = __toESM(require_jsx_dev_runtime(), 1);
 // src/Cache.ts
 var definitionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu;
 var normalizeDefinition = (word) => word.replace(definitionWordStripPattern, "");
@@ -17820,15 +17952,16 @@ var Client = (options) => {
 var isMobile = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 var isLocal = () => window.location.hostname === "localhost";
 // src/index.tsx
-var import_react3 = __toESM(require_react(), 1);
+var import_react4 = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
-var jsx_dev_runtime6 = __toESM(require_jsx_dev_runtime(), 1);
+var jsx_dev_runtime5 = __toESM(require_jsx_dev_runtime(), 1);
 var languageOptions = [
-  { label: "English", value: "English" },
   { label: "Chinese", value: "Chinese (simplified)" },
+  { label: "English", value: "English" },
   { label: "Spanish", value: "Spanish" },
   { label: "Japanese", value: "Japanese" },
-  { label: "Russian", value: "Russian" }
+  { label: "Russian", value: "Russian" },
+  { label: "French", value: "French" }
 ];
 var normalizeText2 = (text) => text.replace(/\s+/g, " ").trim();
 var isSpaceSeparatedLanguage = (language) => !language.toLowerCase().includes("chinese") && !language.toLowerCase().includes("japanese");
@@ -17868,33 +18001,33 @@ var isEditableElement = (element) => {
   return element.isContentEditable;
 };
 var App = () => {
-  const [inputText, setInputText] = import_react3.useState("");
-  const [outputWords, setOutputWords] = import_react3.useState([]);
-  const [isTransliterationVisible, setIsTransliterationVisible] = import_react3.useState(true);
-  const [errorText, setErrorText] = import_react3.useState("");
-  const [isTranslating, setIsTranslating] = import_react3.useState(false);
-  const [isSocketOpen, setIsSocketOpen] = import_react3.useState(false);
-  const [latestRequestSnapshot, setLatestRequestSnapshot] = import_react3.useState({
+  const [inputText, setInputText] = import_react4.useState("");
+  const [outputWords, setOutputWords] = import_react4.useState([]);
+  const [isTransliterationVisible, setIsTransliterationVisible] = import_react4.useState(true);
+  const [errorText, setErrorText] = import_react4.useState("");
+  const [isTranslating, setIsTranslating] = import_react4.useState(false);
+  const [isSocketOpen, setIsSocketOpen] = import_react4.useState(false);
+  const [latestRequestSnapshot, setLatestRequestSnapshot] = import_react4.useState({
     id: "",
     normalizedInputText: ""
   });
-  const [debouncedRequest, setDebouncedRequest] = import_react3.useState(null);
-  const [targetLanguage, setTargetLanguage] = import_react3.useState(languageOptions[1].value);
-  const [selectedModel, setSelectedModel] = import_react3.useState("openai");
-  const [selectedOutputWords, setSelectedOutputWords] = import_react3.useState([]);
-  const [wordDefinitions, setWordDefinitions] = import_react3.useState([]);
-  const [isDefinitionLoading, setIsDefinitionLoading] = import_react3.useState(false);
-  const [isConnectionDotDelayComplete, setIsConnectionDotDelayComplete] = import_react3.useState(false);
-  const clientRef = import_react3.useRef(null);
-  const inputTextareaRef = import_react3.useRef(null);
-  const pendingInputSelectionRef = import_react3.useRef(null);
-  const selectedOutputWordsRef = import_react3.useRef([]);
-  const targetLanguageRef = import_react3.useRef(targetLanguage);
-  const selectedModelRef = import_react3.useRef(selectedModel);
-  const CacheRef = import_react3.useRef(Cache());
-  const headerSectionRef = import_react3.useRef(null);
-  const paneStackRef = import_react3.useRef(null);
-  import_react3.useEffect(() => {
+  const [debouncedRequest, setDebouncedRequest] = import_react4.useState(null);
+  const [targetLanguage, setTargetLanguage] = import_react4.useState(languageOptions[0].value);
+  const [selectedModel, setSelectedModel] = import_react4.useState("openai");
+  const [selectedOutputWords, setSelectedOutputWords] = import_react4.useState([]);
+  const [wordDefinitions, setWordDefinitions] = import_react4.useState([]);
+  const [isDefinitionLoading, setIsDefinitionLoading] = import_react4.useState(false);
+  const [isConnectionDotDelayComplete, setIsConnectionDotDelayComplete] = import_react4.useState(false);
+  const clientRef = import_react4.useRef(null);
+  const inputTextareaRef = import_react4.useRef(null);
+  const pendingInputSelectionRef = import_react4.useRef(null);
+  const selectedOutputWordsRef = import_react4.useRef([]);
+  const targetLanguageRef = import_react4.useRef(targetLanguage);
+  const selectedModelRef = import_react4.useRef(selectedModel);
+  const CacheRef = import_react4.useRef(Cache());
+  const headerSectionRef = import_react4.useRef(null);
+  const paneStackRef = import_react4.useRef(null);
+  import_react4.useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setIsConnectionDotDelayComplete(true);
     }, 1000);
@@ -17902,7 +18035,7 @@ var App = () => {
       window.clearTimeout(timeoutId);
     };
   }, []);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     const headerSection = headerSectionRef.current;
     const paneStack = paneStackRef.current;
     if (!headerSection || !paneStack)
@@ -17934,7 +18067,7 @@ var App = () => {
   const hasInputText = !!normalizedInputText;
   const hasOutputWords = outputWords.length > 0;
   const isSpinnerVisible = isTranslating && !!latestRequestSnapshot.id && normalizedInputText === latestRequestSnapshot.normalizedInputText;
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     const client = Client({
       onSocketOpenChange: setIsSocketOpen,
       onErrorTextChange: setErrorText,
@@ -17982,16 +18115,16 @@ var App = () => {
       clientRef.current = null;
     };
   }, []);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     targetLanguageRef.current = targetLanguage;
   }, [targetLanguage]);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     selectedModelRef.current = selectedModel;
   }, [selectedModel]);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     selectedOutputWordsRef.current = selectedOutputWords;
   }, [selectedOutputWords]);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     const textarea = inputTextareaRef.current;
     const pendingSelection = pendingInputSelectionRef.current;
     if (!textarea || !pendingSelection) {
@@ -18000,7 +18133,7 @@ var App = () => {
     pendingInputSelectionRef.current = null;
     textarea.setSelectionRange(pendingSelection.start, pendingSelection.end);
   }, [inputText]);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     const handleWindowKeyDown = (event) => {
       const textarea = inputTextareaRef.current;
       if (!textarea)
@@ -18033,7 +18166,7 @@ var App = () => {
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
   }, []);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     const trimmedText = inputText.trim();
     clientRef.current?.setCurrentNormalizedInputText(normalizedInputText);
     if (!trimmedText) {
@@ -18057,7 +18190,7 @@ var App = () => {
       window.clearTimeout(timeoutId);
     };
   }, [inputText, normalizedInputText]);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     const trimmedText = inputText.trim();
     if (!trimmedText) {
       setOutputWords([]);
@@ -18075,13 +18208,13 @@ var App = () => {
       model: selectedModel
     });
   }, [targetLanguage]);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     if (!debouncedRequest || !isSocketOpen) {
       return;
     }
     clientRef.current?.sendTranslateRequest(debouncedRequest);
   }, [debouncedRequest, isSocketOpen]);
-  import_react3.useEffect(() => {
+  import_react4.useEffect(() => {
     if (!selectedOutputWords.length) {
       setWordDefinitions([]);
       setIsDefinitionLoading(false);
@@ -18097,19 +18230,13 @@ var App = () => {
       clientRef.current?.clearDefinitionRequestState();
       return;
     }
-    if (!isSocketOpen) {
+    if (!isSocketOpen)
       return;
-    }
-    const timeoutId = window.setTimeout(() => {
-      clientRef.current?.sendDefinitionsRequest({
-        word: missingWords[0],
-        targetLanguage,
-        model: selectedModel
-      });
-    }, 200);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    clientRef.current?.sendDefinitionsRequest({
+      word: missingWords[0],
+      targetLanguage,
+      model: selectedModel
+    });
   }, [selectedOutputWords, isSocketOpen, selectedModel, targetLanguage]);
   const definitionByWord = new Map(wordDefinitions.map((entry) => [normalizeDefinition(entry.word), entry.definition]));
   const transliterationByWord = new Map;
@@ -18123,9 +18250,9 @@ var App = () => {
       transliterationByWord.set(transliterationKey, literal);
     }
   });
-  return /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("main", {
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("main", {
     children: [
-      /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("section", {
+      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("section", {
         ref: headerSectionRef,
         style: {
           display: "flex",
@@ -18136,46 +18263,51 @@ var App = () => {
           left: "50%"
         },
         children: [
-          /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("img", {
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("img", {
             src: "piggo.svg",
             alt: "",
             "aria-hidden": "true",
             className: "title-icon fade-in",
             draggable: false
           }, undefined, false, undefined, this),
-          /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("p", {
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("p", {
             className: "header-title",
             children: "Piggo Translate"
           }, undefined, false, undefined, this)
         ]
       }, undefined, true, undefined, this),
-      /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("section", {
+      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("section", {
         ref: paneStackRef,
         className: "pane-stack",
         "aria-label": "Translator workspace",
         children: [
-          !isSocketOpen && isConnectionDotDelayComplete ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
+          !isSocketOpen && isConnectionDotDelayComplete ? /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
             className: "pane-stack-connection-dot fade-in",
             "aria-hidden": "true"
           }, undefined, false, undefined, this) : null,
-          /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(TextPane, {
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(TargetLanguageDropdown, {
+            options: languageOptions,
+            targetLanguage,
+            onSelect: setTargetLanguage
+          }, undefined, false, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(TextPane, {
             id: "input-pane-title",
             title: "Input",
             showHeader: false,
-            className: "fade-in",
             placeholder: "",
             ariaLabel: "Text to translate",
             value: inputText,
             autoFocus: true,
             textareaRef: inputTextareaRef,
             onChange: setInputText,
-            afterTextarea: hasInputText && isSpinnerVisible ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
+            afterTextarea: hasInputText && isSpinnerVisible ? /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
               className: "spinner pane-spinner",
               "aria-hidden": "true"
             }, undefined, false, undefined, this) : null,
-            readOnly: false
+            readOnly: false,
+            className: "fade-in"
           }, undefined, false, undefined, this),
-          hasOutputWords ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(TextPane, {
+          hasOutputWords ? /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(TextPane, {
             id: "output-pane-title",
             title: "Translated Output",
             showHeader: false,
@@ -18190,13 +18322,15 @@ var App = () => {
             selectionWordJoiner: isSpaceSeparatedLanguage(targetLanguage) ? " " : "",
             autoFocus: false,
             animateOnMount: true,
-            footer: /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(Transliteration, {
+            footer: /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(Transliteration, {
               value: joinOutputTokens(outputWords, targetLanguage, "literal", { forceSpaceSeparated: true }),
               isVisible: isTransliterationVisible,
               onToggle: () => setIsTransliterationVisible((value) => !value)
             }, undefined, false, undefined, this),
             readOnly: true,
             enableTokenSelection: true,
+            enableCopyButton: true,
+            copyValue: joinOutputTokens(outputWords, targetLanguage, "word"),
             onSelectionChange: (selectionWords) => {
               setSelectedOutputWords(selectionWords);
             }
@@ -18207,7 +18341,7 @@ var App = () => {
             const transliteration = transliterationByWord.get(normalizedWord || word) || "";
             const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word;
             const paneValue = definition ? `${wordWithTransliteration} — ${definition}` : wordWithTransliteration;
-            return /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(TextPane, {
+            return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(TextPane, {
               id: `definition-pane-${index}-title`,
               title: "",
               showHeader: false,
@@ -18216,15 +18350,16 @@ var App = () => {
               ariaLabel: `Definition for ${word}`,
               value: paneValue,
               autoFocus: false,
-              readOnly: true
+              readOnly: true,
+              enableContentSelection: true
             }, `${word}-${index}`, false, undefined, this);
           })
         ]
       }, undefined, true, undefined, this),
-      isLocal() && !isMobile() && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
+      isLocal() && !isMobile() && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
         className: "app-version",
         "aria-label": "App version",
-        children: "v0.1.8"
+        children: "v0.2.1"
       }, undefined, false, undefined, this)
     ]
   }, undefined, true, undefined, this);
@@ -18233,4 +18368,4 @@ var rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Missing root div with id 'root'");
 }
-import_client.createRoot(rootElement).render(/* @__PURE__ */ jsx_dev_runtime6.jsxDEV(App, {}, undefined, false, undefined, this));
+import_client.createRoot(rootElement).render(/* @__PURE__ */ jsx_dev_runtime5.jsxDEV(App, {}, undefined, false, undefined, this));

@@ -8,6 +8,38 @@ const selectionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu
 
 const getSelectionWord = (value: string) => value.replace(selectionWordStripPattern, "")
 
+const copyTextToClipboard = async (value: string) => {
+  if (!value) {
+    return false
+  }
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value)
+      return true
+    } catch {
+      // Fallback handled below for unsupported or blocked clipboard writes
+    }
+  }
+
+  const textarea = document.createElement("textarea")
+  textarea.value = value
+  textarea.style.position = "fixed"
+  textarea.style.left = "-9999px"
+  textarea.setAttribute("readonly", "true")
+  document.body.appendChild(textarea)
+  textarea.select()
+
+  try {
+    const copied = document.execCommand("copy")
+    document.body.removeChild(textarea)
+    return copied
+  } catch {
+    document.body.removeChild(textarea)
+    return false
+  }
+}
+
 const getSharedPrefixLength = (left: string, right: string) => {
   const maxLength = Math.min(left.length, right.length)
   let index = 0
@@ -137,6 +169,7 @@ type TextPaneProps = {
   showHeader: boolean
   textareaRef?: MutableRefObject<HTMLTextAreaElement | null>
   enableTokenSelection?: boolean
+  enableContentSelection?: boolean
   animateOnMount?: boolean
   selectionWords?: string[]
   selectionTokens?: {
@@ -145,10 +178,12 @@ type TextPaneProps = {
     selectable?: boolean
   }[]
   selectionWordJoiner?: string
+  enableCopyButton?: boolean
+  copyValue?: string
 }
 
 const TextPane = ({
-  id, title, placeholder, ariaLabel, value, className, afterTextarea, footer, readOnly, autoFocus, onChange, onSelectionChange, showHeader, textareaRef, enableTokenSelection, animateOnMount, selectionWords, selectionTokens, selectionWordJoiner = " "
+  id, title, placeholder, ariaLabel, value, className, afterTextarea, footer, readOnly, autoFocus, onChange, onSelectionChange, showHeader, textareaRef, enableTokenSelection, enableContentSelection, animateOnMount, selectionWords, selectionTokens, selectionWordJoiner = " ", enableCopyButton, copyValue
 }: TextPaneProps) => {
   const localTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const textContentRef = useRef<HTMLDivElement | null>(null)
@@ -157,7 +192,7 @@ const TextPane = ({
   const initialText = shouldAnimateOnMountRef.current ? "" : value
   const [text, setText] = useState(initialText)
   const [desiredText, setDesiredText] = useState(value)
-  const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ")
+  const paneClassName = [showHeader ? "pane" : "pane", className].filter(Boolean).join(" ")
   const normalizedSelectionTokens =
     selectionTokens && selectionTokens.length
       ? selectionTokens
@@ -195,7 +230,12 @@ const TextPane = ({
       selectionWordJoiner
     )
     : staticSelectableTokens
-  const shouldRenderSelectableOutput = !!enableTokenSelection
+  const shouldRenderTokenizedOutput = !!enableTokenSelection
+  const shouldRenderSelectableOutput = shouldRenderTokenizedOutput || !!enableContentSelection
+  const [didCopy, setDidCopy] = useState(false)
+  const copyFeedbackTimeoutRef = useRef<number | null>(null)
+  const [isCopySelected, setIsCopySelected] = useState(false)
+  const copySelectedTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (shouldAnimateOnMountRef.current) {
@@ -258,7 +298,7 @@ const TextPane = ({
   }, [shouldRenderSelectableOutput, text])
 
   useEffect(() => {
-    if (!shouldRenderSelectableOutput || !onSelectionChange) {
+    if (!shouldRenderTokenizedOutput || !onSelectionChange) {
       return
     }
 
@@ -389,7 +429,7 @@ const TextPane = ({
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange)
     }
-  }, [onSelectionChange, shouldRenderSelectableOutput])
+  }, [onSelectionChange, shouldRenderTokenizedOutput])
 
   const selectToken = (tokenElement: HTMLSpanElement) => {
     const selection = window.getSelection()
@@ -439,6 +479,18 @@ const TextPane = ({
     clearSelectableOutputSelection()
   }, [shouldRenderSelectableOutput, value])
 
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current)
+      }
+
+      if (copySelectedTimeoutRef.current) {
+        window.clearTimeout(copySelectedTimeoutRef.current)
+      }
+    }
+  }, [])
+
   return (
     <section
       className={paneClassName}
@@ -457,46 +509,48 @@ const TextPane = ({
           className="pane-text-content pane-text-content-selectable"
           role="textbox"
           aria-label={ariaLabel}
-          onMouseDown={(event) => {
+          onMouseDown={shouldRenderTokenizedOutput ? (event) => {
             const tokenElement = (event.target as Element).closest<HTMLSpanElement>(".pane-text-token")
             const isWordToken = !!tokenElement && !!tokenElement.dataset.selectionWord
 
             if (!isWordToken) {
               clearSelectableOutputSelection()
             }
-          }}
+          } : undefined}
         >
-          {selectableTokens.map((token, tokenIndex) => {
-            const tokenValue = token.value
-            const isWhitespaceToken = !tokenValue.trim()
-            const selectionWord = token.selectionWord ?? getSelectionWord(tokenValue)
-            const isSelectableToken = token.selectable ?? !!selectionWord
-            const tokenClassName = [
-              "pane-text-token",
-              isWhitespaceToken ? "pane-text-token-space" : "",
-              isSelectableToken ? "pane-text-token-selectable" : "pane-text-token-nonselectable"
-            ].filter(Boolean).join(" ")
+          {shouldRenderTokenizedOutput
+            ? selectableTokens.map((token, tokenIndex) => {
+              const tokenValue = token.value
+              const isWhitespaceToken = !tokenValue.trim()
+              const selectionWord = token.selectionWord ?? getSelectionWord(tokenValue)
+              const isSelectableToken = token.selectable ?? !!selectionWord
+              const tokenClassName = [
+                "pane-text-token",
+                isWhitespaceToken ? "pane-text-token-space" : "",
+                isSelectableToken ? "pane-text-token-selectable" : "pane-text-token-nonselectable"
+              ].filter(Boolean).join(" ")
 
-            return (
-              <span key={`${tokenValue}-${tokenIndex}`}>
-                <span
-                  className={tokenClassName}
-                  data-selection-word={isSelectableToken ? selectionWord : ""}
-                  onMouseDown={(event) => {
-                    if (isWhitespaceToken || !isSelectableToken) {
-                      return
-                    }
+              return (
+                <span key={`${tokenValue}-${tokenIndex}`}>
+                  <span
+                    className={tokenClassName}
+                    data-selection-word={isSelectableToken ? selectionWord : ""}
+                    onMouseDown={(event) => {
+                      if (isWhitespaceToken || !isSelectableToken) {
+                        return
+                      }
 
-                    event.preventDefault()
-                    selectToken(event.currentTarget)
-                  }}
-                >
-                  {tokenValue}
+                      event.preventDefault()
+                      selectToken(event.currentTarget)
+                    }}
+                  >
+                    {tokenValue}
+                  </span>
+                  {shouldUseWordJoiner && tokenIndex < selectableTokens.length - 1 ? selectionWordJoiner : null}
                 </span>
-                {shouldUseWordJoiner && tokenIndex < selectableTokens.length - 1 ? selectionWordJoiner : null}
-              </span>
-            )
-          })}
+              )
+            })
+            : text}
         </div>
       ) : (
         <textarea
@@ -530,6 +584,48 @@ const TextPane = ({
 
       {afterTextarea}
       {footer ? footer : null}
+      {enableCopyButton ? (
+        <button
+          type="button"
+          className={`pane-copy-button${didCopy ? " pane-copy-button-copied" : ""}${isCopySelected ? " pane-copy-button-selected" : ""}`}
+          aria-label="Copy output text"
+          title={didCopy ? "Copied" : "Copy"}
+          onMouseDown={(event) => {
+            event.preventDefault()
+          }}
+          onClick={async () => {
+            const copied = await copyTextToClipboard(copyValue ?? value)
+
+            if (!copied) {
+              return
+            }
+
+            setDidCopy(true)
+            setIsCopySelected(true)
+
+            if (copySelectedTimeoutRef.current) {
+              window.clearTimeout(copySelectedTimeoutRef.current)
+            }
+
+            copySelectedTimeoutRef.current = window.setTimeout(() => {
+              setIsCopySelected(false)
+            }, 200)
+
+            if (copyFeedbackTimeoutRef.current) {
+              window.clearTimeout(copyFeedbackTimeoutRef.current)
+            }
+
+            copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+              setDidCopy(false)
+            }, 1000)
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 8h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" />
+            <path d="M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1" />
+          </svg>
+        </button>
+      ) : null}
     </section>
   )
 }

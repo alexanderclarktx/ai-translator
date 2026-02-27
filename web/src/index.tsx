@@ -1,18 +1,23 @@
 import {
-  LanguageOption, TextPane, Transliteration, normalizeDefinition,
+  TargetLanguageDropdown, TextPane, Transliteration, normalizeDefinition,
   Cache, Client, RequestSnapshot, isLocal, isMobile
 } from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
 import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
 
+export type LanguageOption = {
+  label: string
+  value: string
+}
+
 const languageOptions: LanguageOption[] = [
-  { label: "English", value: "English" },
   { label: "Chinese", value: "Chinese (simplified)" },
+  { label: "English", value: "English" },
   { label: "Spanish", value: "Spanish" },
   { label: "Japanese", value: "Japanese" },
-  { label: "Russian", value: "Russian" }
-  // { label: "French", value: "French" },
+  { label: "Russian", value: "Russian" },
+  { label: "French", value: "French" },
   // { label: "Italian", value: "Italian" },
   // { label: "Korean", value: "Korean" },
 ]
@@ -90,7 +95,7 @@ const App = () => {
     targetLanguage: string
     model: Model
   } | null>(null)
-  const [targetLanguage, setTargetLanguage] = useState(languageOptions[1].value)
+  const [targetLanguage, setTargetLanguage] = useState(languageOptions[0].value)
   const [selectedModel, setSelectedModel] = useState<Model>("openai")
   const [selectedOutputWords, setSelectedOutputWords] = useState<string[]>([])
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([])
@@ -359,21 +364,13 @@ const App = () => {
       return
     }
 
-    if (!isSocketOpen) {
-      return
-    }
+    if (!isSocketOpen) return
 
-    const timeoutId = window.setTimeout(() => {
-      clientRef.current?.sendDefinitionsRequest({
-        word: missingWords[0],
-        targetLanguage,
-        model: selectedModel
-      })
-    }, 200)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
+    clientRef.current?.sendDefinitionsRequest({
+      word: missingWords[0],
+      targetLanguage,
+      model: selectedModel
+    })
   }, [selectedOutputWords, isSocketOpen, selectedModel, targetLanguage])
 
   const definitionByWord = new Map(
@@ -424,11 +421,16 @@ const App = () => {
           <span className="pane-stack-connection-dot fade-in" aria-hidden="true" />
         ) : null}
 
+        <TargetLanguageDropdown
+          options={languageOptions}
+          targetLanguage={targetLanguage}
+          onSelect={setTargetLanguage}
+        />
+
         <TextPane
           id="input-pane-title"
           title="Input"
           showHeader={false}
-          className="fade-in"
           placeholder=""
           ariaLabel="Text to translate"
           value={inputText}
@@ -439,6 +441,7 @@ const App = () => {
             <span className="spinner pane-spinner" aria-hidden="true" />
           ) : null}
           readOnly={false}
+          className="fade-in"
         />
 
         {hasOutputWords ? (
@@ -466,6 +469,8 @@ const App = () => {
             )}
             readOnly
             enableTokenSelection
+            enableCopyButton
+            copyValue={joinOutputTokens(outputWords, targetLanguage, "word")}
             onSelectionChange={(selectionWords) => {
               setSelectedOutputWords(selectionWords)
             }}
@@ -491,6 +496,7 @@ const App = () => {
               value={paneValue}
               autoFocus={false}
               readOnly
+              enableContentSelection
             />
           )
         })}
@@ -507,7 +513,7 @@ const App = () => {
 
       {isLocal() && !isMobile() && (
         <span className="app-version" aria-label="App version">
-          v0.1.8
+          v0.2.1
         </span>
       )}
     </main>
