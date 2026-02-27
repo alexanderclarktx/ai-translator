@@ -401,11 +401,11 @@ main {
 }
 
 .pane-text-token:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(60, 60, 60, 0.1);
 }
 
 .pane-text-token:focus-visible {
-  outline: 2px solid rgba(0, 0, 0, 0.32);
+  outline: 2px solid rgba(60, 60, 60, 0.32);
   outline-offset: 1px;
 }
 

@@ -144,7 +144,7 @@ const App = () => {
       model: requestInput.model
     }
 
-    console.log("Sending translate request", request)
+    // console.log("Sending translate request", request)
 
     socket.send(JSON.stringify(request))
   }
@@ -176,7 +176,7 @@ const App = () => {
       model: selectedModel
     }
 
-    console.log("Sending definitions request", request)
+    // console.log("Sending definitions request", request)
 
     socket.send(JSON.stringify(request))
   }
