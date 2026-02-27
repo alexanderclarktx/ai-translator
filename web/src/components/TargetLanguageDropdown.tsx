@@ -20,7 +20,6 @@ const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: TargetLan
       aria-label="Target language selector"
       onPointerLeave={(x) => {
         if (isMobile()) return
-        console.log("leave", x)
         setIsDismissed(true)
       }}
     >
@@ -29,21 +28,10 @@ const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: TargetLan
         className="input-pane-target-language fade-in"
         onPointerEnter={() => {
           if (isMobile()) return
-          console.log("focused")
           setIsDismissed(false)
         }}
         onPointerDown={() => {
-          console.log("pointer down", isDismissed)
-          const s = isDismissed
-          setIsDismissed(!s)
-          // if (isDismissed) {
-          //   setIsDismissed(false)
-          // } else {
-          //   setIsDismissed(true)
-          // }
-
-          // setIsDismissed(isDismissed)
-          console.log("pointer down", isDismissed)
+          setIsDismissed(!isDismissed)
         }}
       >
         {selectedLanguageLabel}
