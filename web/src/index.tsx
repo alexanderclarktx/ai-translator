@@ -37,8 +37,15 @@ const isSpaceSeparatedLanguage = (language: string) =>
 const noSpaceBeforePunctuationPattern = /^[.,!?;:%)\]\}»”’、。，！？；：]$/
 const noSpaceAfterPunctuationPattern = /^[(\[{«“‘]$/
 
-const joinOutputTokens = (tokens: TranslateWordToken[], targetLanguage: string, tokenKey: "word" | "literal") => {
-  const useSpaces = isSpaceSeparatedLanguage(targetLanguage)
+const joinOutputTokens = (
+  tokens: TranslateWordToken[],
+  targetLanguage: string,
+  tokenKey: "word" | "literal",
+  options?: {
+    forceSpaceSeparated?: boolean
+  }
+) => {
+  const useSpaces = options?.forceSpaceSeparated || isSpaceSeparatedLanguage(targetLanguage)
 
   return tokens.reduce((result, token, tokenIndex) => {
     const tokenValue = token[tokenKey]
@@ -660,7 +667,7 @@ const App = () => {
           autoFocus={false}
           footer={hasInputText ? (
             <Transliteration
-              value={joinOutputTokens(outputWords, targetLanguage, "literal")}
+              value={joinOutputTokens(outputWords, targetLanguage, "literal", { forceSpaceSeparated: true })}
               isVisible={isTransliterationVisible}
               onToggle={() => setIsTransliterationVisible((value) => !value)}
             />

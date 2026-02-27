@@ -89,8 +89,7 @@ const TextPane = ({
         })
         : []
   const shouldUseSelectionTokens =
-    normalizedSelectionTokens.length > 0 &&
-    text === desiredText
+    normalizedSelectionTokens.length > 0
   const selectableTokens = shouldUseSelectionTokens
     ? normalizedSelectionTokens
     : (text.match(selectableOutputTokenPattern) ?? []).map((token) => {
@@ -375,7 +374,11 @@ const TextPane = ({
             const isWhitespaceToken = !tokenValue.trim()
             const selectionWord = token.selectionWord ?? getSelectionWord(tokenValue)
             const isSelectableToken = token.selectable ?? !!selectionWord
-            const tokenClassName = isWhitespaceToken ? "pane-text-token pane-text-token-space" : "pane-text-token"
+            const tokenClassName = [
+              "pane-text-token",
+              isWhitespaceToken ? "pane-text-token-space" : "",
+              isSelectableToken ? "pane-text-token-selectable" : "pane-text-token-nonselectable"
+            ].filter(Boolean).join(" ")
 
             return (
               <span key={`${tokenValue}-${tokenIndex}`}>
