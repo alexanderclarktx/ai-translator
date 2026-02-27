@@ -463,7 +463,7 @@ const App = () => {
       </div> */}
 
       <span className="app-version" aria-label="App version">
-        v0.1.4
+        v0.1.5
       </span>
     </main>
   )
