@@ -1,7 +1,8 @@
-import { Model, WordDefinition, WordToken, WsDefinitionsRequest, WsRequest, WsServerMessage } from "@template/core"
+import { Model, WordDefinition, WordToken } from "@template/core"
 import { LanguageOption, TextPane, Transliteration, DefinitionCache, normalizeDefinitionWord } from "@template/web"
 import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
+import { Client, ClientApi, RequestSnapshot } from "./Client"
 
 const languageOptions: LanguageOption[] = [
   { label: "English", value: "English" },
@@ -13,11 +14,6 @@ const languageOptions: LanguageOption[] = [
   // { label: "Italian", value: "Italian" },
   // { label: "Korean", value: "Korean" },
 ]
-
-const getTranslateWsUrl = () => {
-  const { hostname } = window.location
-  return hostname === "localhost" ? "http://localhost:5001/api/ws" : "https://piggo-translate-production.up.railway.app/api/ws"
-}
 
 const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim()
 const isSpaceSeparatedLanguage = (language: string) =>
@@ -76,19 +72,6 @@ const isEditableElement = (element: Element | null) => {
   return element.isContentEditable
 }
 
-const getRequestSignature = ({ text, targetLanguage, model }: { text: string, targetLanguage: string, model: Model }) => {
-  const normalizedText = normalizeText(text)
-  return `${model}::${normalizedText}::${targetLanguage}`
-}
-
-const getDefinitionRequestSignature = (
-  word: string,
-  targetLanguage: string,
-  model: Model
-) => {
-  return `${model}::${targetLanguage}::${normalizeDefinitionWord(word)}`
-}
-
 const App = () => {
   const [inputText, setInputText] = useState("")
   const [outputWords, setOutputWords] = useState<WordToken[]>([])
@@ -96,7 +79,7 @@ const App = () => {
   const [errorText, setErrorText] = useState("")
   const [isTranslating, setIsTranslating] = useState(false)
   const [isSocketOpen, setIsSocketOpen] = useState(false)
-  const [latestRequestSnapshot, setLatestRequestSnapshot] = useState({
+  const [latestRequestSnapshot, setLatestRequestSnapshot] = useState<RequestSnapshot>({
     id: "",
     normalizedInputText: ""
   })
@@ -111,20 +94,12 @@ const App = () => {
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([])
   const [isDefinitionLoading, setIsDefinitionLoading] = useState(false)
   const [isConnectionDotDelayComplete, setIsConnectionDotDelayComplete] = useState(false)
-  const socketRef = useRef<WebSocket | null>(null)
+  const clientRef = useRef<ClientApi | null>(null)
   const inputTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const pendingInputSelectionRef = useRef<{ start: number, end: number } | null>(null)
-  const reconnectTimeoutIdRef = useRef<number | null>(null)
-  const requestCounterRef = useRef(0)
-  const latestRequestRef = useRef({
-    id: "",
-    normalizedInputText: ""
-  })
-  const currentNormalizedInputTextRef = useRef("")
-  const lastRequestedSignatureRef = useRef("")
-  const latestDefinitionsRequestIdRef = useRef("")
-  const lastDefinitionRequestSignatureRef = useRef("")
   const selectedOutputWordsRef = useRef<string[]>([])
+  const targetLanguageRef = useRef(targetLanguage)
+  const selectedModelRef = useRef(selectedModel)
   const definitionCacheRef = useRef(DefinitionCache())
 
   useEffect(() => {
@@ -144,241 +119,66 @@ const App = () => {
     !!latestRequestSnapshot.id &&
     normalizedInputText === latestRequestSnapshot.normalizedInputText
 
-  const sendTranslateRequest = (requestInput: {
-    text: string
-    targetLanguage: string
-    model: Model
-  }) => {
-    const socket = socketRef.current
-
-    if (
-      !requestInput.text ||
-      !socket ||
-      socket.readyState !== WebSocket.OPEN
-    ) {
-      return
-    }
-
-    requestCounterRef.current += 1
-    const requestId = `${Date.now()}-${requestCounterRef.current}`
-
-    setErrorText("")
-    setIsTranslating(true)
-    latestRequestRef.current = {
-      id: requestId,
-      normalizedInputText: normalizeText(requestInput.text)
-    }
-    setLatestRequestSnapshot(latestRequestRef.current)
-    lastRequestedSignatureRef.current = getRequestSignature(requestInput)
-
-    const request: WsRequest = {
-      type: "translate.request",
-      requestId,
-      text: requestInput.text,
-      targetLanguage: requestInput.targetLanguage,
-      model: requestInput.model
-    }
-
-    // console.log("Sending translate request", request)
-
-    socket.send(JSON.stringify(request))
-  }
-
-  const sendDefinitionsRequest = (word: string) => {
-    const socket = socketRef.current
-    const normalizedWord = normalizeDefinitionWord(word)
-
-    if (!normalizedWord || !socket || socket.readyState !== WebSocket.OPEN) {
-      return
-    }
-
-    const requestSignature = getDefinitionRequestSignature(normalizedWord, targetLanguage, selectedModel)
-
-    if (lastDefinitionRequestSignatureRef.current === requestSignature) {
-      return
-    }
-
-    requestCounterRef.current += 1
-    const requestId = `${Date.now()}-${requestCounterRef.current}`
-    latestDefinitionsRequestIdRef.current = requestId
-    lastDefinitionRequestSignatureRef.current = requestSignature
-    setIsDefinitionLoading(true)
-
-    const request: WsDefinitionsRequest = {
-      type: "translate.definitions.request",
-      requestId,
-      word: normalizedWord,
-      targetLanguage,
-      model: selectedModel
-    }
-
-    // console.log("Sending definitions request", request)
-
-    socket.send(JSON.stringify(request))
-  }
-
   useEffect(() => {
-    let isDisposed = false
-
-    const clearReconnectTimeout = () => {
-      if (reconnectTimeoutIdRef.current === null) {
-        return
-      }
-
-      window.clearTimeout(reconnectTimeoutIdRef.current)
-      reconnectTimeoutIdRef.current = null
-    }
-
-    const connectSocket = () => {
-      clearReconnectTimeout()
-
-      const socket = new WebSocket(getTranslateWsUrl())
-      console.log("Connecting to websocket at", getTranslateWsUrl())
-      socketRef.current = socket
-      setIsSocketOpen(false)
-
-      socket.addEventListener("open", () => {
-        if (isDisposed || socketRef.current !== socket) {
-          return
+    const client = Client({
+      onSocketOpenChange: setIsSocketOpen,
+      onErrorTextChange: setErrorText,
+      onTranslatingChange: setIsTranslating,
+      onDefinitionLoadingChange: setIsDefinitionLoading,
+      onLatestRequestChange: setLatestRequestSnapshot,
+      onTranslateSuccess: (words) => {
+        const selection = window.getSelection()
+        if (selection) {
+          selection.removeAllRanges()
         }
 
-        setIsSocketOpen(true)
-        setErrorText("")
-      })
-
-      socket.addEventListener("message", (event) => {
-        if (isDisposed || socketRef.current !== socket) {
-          return
-        }
-
-        let message: WsServerMessage
-
-        try {
-          message = JSON.parse(event.data) as WsServerMessage
-        } catch (error) {
-          setIsTranslating(false)
-          setErrorText("Invalid websocket response")
-          return
-        }
-
-        if (message.type === "ready") {
-          return
-        }
-
-        if (message.type === "translate.definitions.success") {
-          if (message.requestId !== latestDefinitionsRequestIdRef.current) {
-            return
-          }
-
-          definitionCacheRef.current.writeDefinitionsToCache(message.definitions)
-          const selectedWords = selectedOutputWordsRef.current
-          setWordDefinitions(definitionCacheRef.current.getCachedDefinitions(selectedWords))
-          const missingWords = definitionCacheRef.current.getMissingDefinitionWords(selectedWords)
-
-          if (missingWords.length) {
-            sendDefinitionsRequest(missingWords[0])
-          } else {
-            setIsDefinitionLoading(false)
-          }
-          return
-        }
-
-        if (
-          message.type === "translate.error" &&
-          message.requestId &&
-          message.requestId === latestDefinitionsRequestIdRef.current
-        ) {
-          setWordDefinitions([])
-          setIsDefinitionLoading(false)
-          return
-        }
-
-        const latestRequestId = latestRequestRef.current.id
-        const latestRequestInput = latestRequestRef.current.normalizedInputText
-        const currentInput = currentNormalizedInputTextRef.current
-        const isActiveCurrentRequest =
-          !!latestRequestId &&
-          !!latestRequestInput &&
-          !!currentInput &&
-          currentInput === latestRequestInput &&
-          (!message.requestId || message.requestId === latestRequestId)
-
-        if (!isActiveCurrentRequest) {
-          return
-        }
-
-        setIsTranslating(false)
-
-        if (message.type === "translate.success") {
-          const selection = window.getSelection()
-          if (selection) {
-            selection.removeAllRanges()
-          }
-
-          // console.log("got translation", message.words)
-
-          setOutputWords(message.words)
-          setSelectedOutputWords([])
-          setWordDefinitions([])
-          setIsDefinitionLoading(false)
-          latestDefinitionsRequestIdRef.current = ""
-          lastDefinitionRequestSignatureRef.current = ""
-          setErrorText("")
-          return
-        }
-
-        setErrorText(message.error || "Translation failed")
-      })
-
-      socket.addEventListener("error", () => {
-        if (isDisposed || socketRef.current !== socket) {
-          return
-        }
-
-        setIsSocketOpen(false)
-      })
-
-      socket.addEventListener("close", () => {
-        if (socketRef.current === socket) {
-          socketRef.current = null
-        }
-
-        if (isDisposed) {
-          return
-        }
-
-        setIsSocketOpen(false)
-        setIsTranslating(false)
+        setOutputWords(words)
+        setSelectedOutputWords([])
+        setWordDefinitions([])
         setIsDefinitionLoading(false)
-        latestRequestRef.current = { id: "", normalizedInputText: "" }
-        setLatestRequestSnapshot(latestRequestRef.current)
-        currentNormalizedInputTextRef.current = ""
-        lastRequestedSignatureRef.current = ""
-        latestDefinitionsRequestIdRef.current = ""
-        lastDefinitionRequestSignatureRef.current = ""
-        reconnectTimeoutIdRef.current = window.setTimeout(() => {
-          connectSocket()
-        }, 500)
-      })
-    }
+        client.clearDefinitionRequestState()
+      },
+      onTranslateError: (error) => {
+        setErrorText(error)
+      },
+      onDefinitionsSuccess: (definitions) => {
+        definitionCacheRef.current.writeDefinitionsToCache(definitions)
+        const selectedWords = selectedOutputWordsRef.current
+        setWordDefinitions(definitionCacheRef.current.getCachedDefinitions(selectedWords))
+        const missingWords = definitionCacheRef.current.getMissingDefinitionWords(selectedWords)
 
-    connectSocket()
+        if (missingWords.length) {
+          client.sendDefinitionsRequest({
+            word: missingWords[0],
+            targetLanguage: targetLanguageRef.current,
+            model: selectedModelRef.current
+          })
+        } else {
+          setIsDefinitionLoading(false)
+        }
+      },
+      onDefinitionsError: () => {
+        setWordDefinitions([])
+        setIsDefinitionLoading(false)
+      }
+    })
+
+    clientRef.current = client
+    client.connect()
 
     return () => {
-      isDisposed = true
-      clearReconnectTimeout()
-
-      const socket = socketRef.current
-      socketRef.current = null
-      setIsSocketOpen(false)
-
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close()
-      } else if (socket) {
-        socket.close()
-      }
+      client.dispose()
+      clientRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    targetLanguageRef.current = targetLanguage
+  }, [targetLanguage])
+
+  useEffect(() => {
+    selectedModelRef.current = selectedModel
+  }, [selectedModel])
 
   useEffect(() => {
     selectedOutputWordsRef.current = selectedOutputWords
@@ -445,7 +245,7 @@ const App = () => {
   // if input changes
   useEffect(() => {
     const trimmedText = inputText.trim()
-    currentNormalizedInputTextRef.current = normalizedInputText
+    clientRef.current?.setCurrentNormalizedInputText(normalizedInputText)
 
     if (!trimmedText) {
       setOutputWords([])
@@ -454,11 +254,7 @@ const App = () => {
       setIsDefinitionLoading(false)
       setErrorText("")
       setDebouncedRequest(null)
-      latestRequestRef.current = { id: "", normalizedInputText: "" }
-      setLatestRequestSnapshot(latestRequestRef.current)
-      lastRequestedSignatureRef.current = ""
-      latestDefinitionsRequestIdRef.current = ""
-      lastDefinitionRequestSignatureRef.current = ""
+      clientRef.current?.clearAllRequestState()
       return
     }
 
@@ -486,11 +282,7 @@ const App = () => {
       setIsDefinitionLoading(false)
       setErrorText("")
       setDebouncedRequest(null)
-      latestRequestRef.current = { id: "", normalizedInputText: "" }
-      setLatestRequestSnapshot(latestRequestRef.current)
-      lastRequestedSignatureRef.current = ""
-      latestDefinitionsRequestIdRef.current = ""
-      lastDefinitionRequestSignatureRef.current = ""
+      clientRef.current?.clearAllRequestState()
       return
     }
 
@@ -506,21 +298,14 @@ const App = () => {
       return
     }
 
-    const nextSignature = getRequestSignature(debouncedRequest)
-
-    if (lastRequestedSignatureRef.current === nextSignature) {
-      return
-    }
-
-    sendTranslateRequest(debouncedRequest)
+    clientRef.current?.sendTranslateRequest(debouncedRequest)
   }, [debouncedRequest, isSocketOpen])
 
   useEffect(() => {
     if (!selectedOutputWords.length) {
       setWordDefinitions([])
       setIsDefinitionLoading(false)
-      latestDefinitionsRequestIdRef.current = ""
-      lastDefinitionRequestSignatureRef.current = ""
+      clientRef.current?.clearDefinitionRequestState()
       return
     }
 
@@ -532,8 +317,7 @@ const App = () => {
 
     if (!missingWords.length) {
       setIsDefinitionLoading(false)
-      latestDefinitionsRequestIdRef.current = ""
-      lastDefinitionRequestSignatureRef.current = ""
+      clientRef.current?.clearDefinitionRequestState()
       return
     }
 
@@ -542,7 +326,11 @@ const App = () => {
     }
 
     const timeoutId = window.setTimeout(() => {
-      sendDefinitionsRequest(missingWords[0])
+      clientRef.current?.sendDefinitionsRequest({
+        word: missingWords[0],
+        targetLanguage,
+        model: selectedModel
+      })
     }, 200)
 
     return () => {
