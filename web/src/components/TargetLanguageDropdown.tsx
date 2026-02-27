@@ -1,5 +1,5 @@
+import { LanguageOption } from ".."
 import { useState } from "react"
-import { LanguageOption } from "./LanguagePicker"
 
 type TargetLanguageDropdownProps = {
   options: LanguageOption[]

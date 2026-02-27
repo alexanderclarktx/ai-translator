@@ -1,10 +1,15 @@
 import {
-  LanguageOption, TargetLanguageDropdown, TextPane, Transliteration, normalizeDefinition,
+  TargetLanguageDropdown, TextPane, Transliteration, normalizeDefinition,
   Cache, Client, RequestSnapshot, isLocal, isMobile
 } from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
 import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
+
+export type LanguageOption = {
+  label: string
+  value: string
+}
 
 const languageOptions: LanguageOption[] = [
   { label: "Chinese", value: "Chinese (simplified)" },
