@@ -1,5 +1,5 @@
 import {
-  LanguageOption, TextPane, Transliteration, normalizeDefinition,
+  LanguageOption, TargetLanguageDropdown, TextPane, Transliteration, normalizeDefinition,
   Cache, Client, RequestSnapshot, isLocal, isMobile
 } from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
@@ -417,7 +417,12 @@ const App = () => {
         ) : null}
 
         <section className="input-pane-block fade-in" aria-label="Input language pane">
-          <p className="input-pane-target-language">{targetLanguage}</p>
+          <TargetLanguageDropdown
+            options={languageOptions}
+            targetLanguage={targetLanguage}
+            onSelect={setTargetLanguage}
+          />
+
           <TextPane
             id="input-pane-title"
             title="Input"
