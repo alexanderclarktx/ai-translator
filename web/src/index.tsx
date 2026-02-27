@@ -469,6 +469,8 @@ const App = () => {
             )}
             readOnly
             enableTokenSelection
+            enableCopyButton
+            copyValue={joinOutputTokens(outputWords, targetLanguage, "word")}
             onSelectionChange={(selectionWords) => {
               setSelectedOutputWords(selectionWords)
             }}
