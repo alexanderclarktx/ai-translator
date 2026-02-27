@@ -137,6 +137,7 @@ type TextPaneProps = {
   showHeader: boolean
   textareaRef?: MutableRefObject<HTMLTextAreaElement | null>
   enableTokenSelection?: boolean
+  enableContentSelection?: boolean
   animateOnMount?: boolean
   selectionWords?: string[]
   selectionTokens?: {
@@ -148,7 +149,7 @@ type TextPaneProps = {
 }
 
 const TextPane = ({
-  id, title, placeholder, ariaLabel, value, className, afterTextarea, footer, readOnly, autoFocus, onChange, onSelectionChange, showHeader, textareaRef, enableTokenSelection, animateOnMount, selectionWords, selectionTokens, selectionWordJoiner = " "
+  id, title, placeholder, ariaLabel, value, className, afterTextarea, footer, readOnly, autoFocus, onChange, onSelectionChange, showHeader, textareaRef, enableTokenSelection, enableContentSelection, animateOnMount, selectionWords, selectionTokens, selectionWordJoiner = " "
 }: TextPaneProps) => {
   const localTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const textContentRef = useRef<HTMLDivElement | null>(null)
@@ -195,7 +196,8 @@ const TextPane = ({
       selectionWordJoiner
     )
     : staticSelectableTokens
-  const shouldRenderSelectableOutput = !!enableTokenSelection
+  const shouldRenderTokenizedOutput = !!enableTokenSelection
+  const shouldRenderSelectableOutput = shouldRenderTokenizedOutput || !!enableContentSelection
 
   useEffect(() => {
     if (shouldAnimateOnMountRef.current) {
@@ -258,7 +260,7 @@ const TextPane = ({
   }, [shouldRenderSelectableOutput, text])
 
   useEffect(() => {
-    if (!shouldRenderSelectableOutput || !onSelectionChange) {
+    if (!shouldRenderTokenizedOutput || !onSelectionChange) {
       return
     }
 
@@ -389,7 +391,7 @@ const TextPane = ({
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange)
     }
-  }, [onSelectionChange, shouldRenderSelectableOutput])
+  }, [onSelectionChange, shouldRenderTokenizedOutput])
 
   const selectToken = (tokenElement: HTMLSpanElement) => {
     const selection = window.getSelection()
@@ -457,46 +459,48 @@ const TextPane = ({
           className="pane-text-content pane-text-content-selectable"
           role="textbox"
           aria-label={ariaLabel}
-          onMouseDown={(event) => {
+          onMouseDown={shouldRenderTokenizedOutput ? (event) => {
             const tokenElement = (event.target as Element).closest<HTMLSpanElement>(".pane-text-token")
             const isWordToken = !!tokenElement && !!tokenElement.dataset.selectionWord
 
             if (!isWordToken) {
               clearSelectableOutputSelection()
             }
-          }}
+          } : undefined}
         >
-          {selectableTokens.map((token, tokenIndex) => {
-            const tokenValue = token.value
-            const isWhitespaceToken = !tokenValue.trim()
-            const selectionWord = token.selectionWord ?? getSelectionWord(tokenValue)
-            const isSelectableToken = token.selectable ?? !!selectionWord
-            const tokenClassName = [
-              "pane-text-token",
-              isWhitespaceToken ? "pane-text-token-space" : "",
-              isSelectableToken ? "pane-text-token-selectable" : "pane-text-token-nonselectable"
-            ].filter(Boolean).join(" ")
+          {shouldRenderTokenizedOutput
+            ? selectableTokens.map((token, tokenIndex) => {
+              const tokenValue = token.value
+              const isWhitespaceToken = !tokenValue.trim()
+              const selectionWord = token.selectionWord ?? getSelectionWord(tokenValue)
+              const isSelectableToken = token.selectable ?? !!selectionWord
+              const tokenClassName = [
+                "pane-text-token",
+                isWhitespaceToken ? "pane-text-token-space" : "",
+                isSelectableToken ? "pane-text-token-selectable" : "pane-text-token-nonselectable"
+              ].filter(Boolean).join(" ")
 
-            return (
-              <span key={`${tokenValue}-${tokenIndex}`}>
-                <span
-                  className={tokenClassName}
-                  data-selection-word={isSelectableToken ? selectionWord : ""}
-                  onMouseDown={(event) => {
-                    if (isWhitespaceToken || !isSelectableToken) {
-                      return
-                    }
+              return (
+                <span key={`${tokenValue}-${tokenIndex}`}>
+                  <span
+                    className={tokenClassName}
+                    data-selection-word={isSelectableToken ? selectionWord : ""}
+                    onMouseDown={(event) => {
+                      if (isWhitespaceToken || !isSelectableToken) {
+                        return
+                      }
 
-                    event.preventDefault()
-                    selectToken(event.currentTarget)
-                  }}
-                >
-                  {tokenValue}
+                      event.preventDefault()
+                      selectToken(event.currentTarget)
+                    }}
+                  >
+                    {tokenValue}
+                  </span>
+                  {shouldUseWordJoiner && tokenIndex < selectableTokens.length - 1 ? selectionWordJoiner : null}
                 </span>
-                {shouldUseWordJoiner && tokenIndex < selectableTokens.length - 1 ? selectionWordJoiner : null}
-              </span>
-            )
-          })}
+              )
+            })
+            : text}
         </div>
       ) : (
         <textarea

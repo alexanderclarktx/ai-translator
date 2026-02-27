@@ -494,6 +494,7 @@ const App = () => {
               value={paneValue}
               autoFocus={false}
               readOnly
+              enableContentSelection
             />
           )
         })}

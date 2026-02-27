@@ -340,6 +340,11 @@ main {
   font-size: 1.3rem;
 }
 
+.pane-definition .pane-text-content {
+  text-align: left;
+  font-size: 1.3rem;
+}
+
 .pane-textarea::placeholder {
   color: #5c6672;
 }
@@ -347,6 +352,12 @@ main {
 .pane-textarea[readonly] {
   background: rgba(255, 255, 255, 0.28);
   pointer-events: none;
+}
+
+.pane-text-token {
+  border-radius: 0.2rem;
+  cursor: default;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
 .pane-text-content {
@@ -368,21 +379,19 @@ main {
 
 .pane-text-content-selectable {
   user-select: text;
-  /* cursor: text; */
+  cursor: default
 }
 
 .pane-text-content-selectable ::selection {
   background: transparent;
 }
 
-.pane-text-token {
-  border-radius: 0.2rem;
-  cursor: default;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
 .pane-text-token-selectable:hover {
   background: rgba(60, 60, 60, 0.1);
+}
+
+.pane-text-content-selectable:hover ::selection {
+  background: transparent;
 }
 
 .pane-text-token-nonselectable {
@@ -559,6 +568,7 @@ main {
     padding-top: 0.6rem;
     padding-bottom: 0.6rem;
   }
+
   .pane-text-content {
     padding: 0.7rem;
   }
