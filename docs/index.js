@@ -17110,6 +17110,7 @@ var jsx_dev_runtime3 = __toESM(require_jsx_dev_runtime(), 1);
 var textPaneAnimationMinIntervalMs = 10;
 var textPaneAnimationMaxIntervalMs = 110;
 var textPaneAnimationFastThreshold = 24;
+var selectableOutputTokenPattern = /[\p{Script=Han}]|[^\s\p{Script=Han}]+|\s+/gu;
 var getSharedPrefixLength = (left, right) => {
   const maxLength = Math.min(left.length, right.length);
   let index = 0;
@@ -17146,13 +17147,23 @@ var TextPane = ({
   readOnly,
   autoFocus,
   onChange,
+  onSelectionChange,
   showHeader,
-  textareaRef
+  textareaRef,
+  enableTokenSelection,
+  selectionWords,
+  selectionWordJoiner = " "
 }) => {
   const localTextareaRef = import_react.useRef(null);
+  const textContentRef = import_react.useRef(null);
+  const lastSelectionRef = import_react.useRef("");
   const [text, setText] = import_react.useState(value);
   const [desiredText, setDesiredText] = import_react.useState(value);
   const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ");
+  const shouldUseSelectionWords = !!selectionWords && selectionWords.length > 0 && text === desiredText;
+  const selectableTokens = shouldUseSelectionWords ? selectionWords : text.match(selectableOutputTokenPattern) ?? [];
+  const shouldUseWordJoiner = shouldUseSelectionWords && selectionWords.length > 1;
+  const shouldRenderSelectableOutput = !!enableTokenSelection;
   import_react.useEffect(() => {
     setDesiredText(value);
   }, [readOnly, value]);
@@ -17183,13 +17194,148 @@ var TextPane = ({
     };
   }, [desiredText, text]);
   import_react.useLayoutEffect(() => {
+    if (shouldRenderSelectableOutput) {
+      return;
+    }
     const textarea = localTextareaRef.current;
     if (!textarea) {
       return;
     }
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [text]);
+  }, [shouldRenderSelectableOutput, text]);
+  import_react.useEffect(() => {
+    if (!shouldRenderSelectableOutput || !onSelectionChange) {
+      return;
+    }
+    const getTokenElementFromNode = (node) => {
+      if (!node) {
+        return null;
+      }
+      const element = node instanceof Element ? node : node.parentElement;
+      return element?.closest(".pane-text-token") ?? null;
+    };
+    const updateSelectedTokenStyles = (range) => {
+      const contentElement = textContentRef.current;
+      if (!contentElement) {
+        return;
+      }
+      const tokenElements = Array.from(contentElement.querySelectorAll(".pane-text-token"));
+      tokenElements.forEach((tokenElement) => {
+        tokenElement.classList.remove("pane-text-token-selected");
+        tokenElement.classList.remove("pane-text-token-selected-start");
+        tokenElement.classList.remove("pane-text-token-selected-end");
+      });
+      if (!range || range.collapsed) {
+        return;
+      }
+      tokenElements.forEach((tokenElement) => {
+        if (range.intersectsNode(tokenElement)) {
+          tokenElement.classList.add("pane-text-token-selected");
+        }
+      });
+      tokenElements.forEach((tokenElement, tokenIndex) => {
+        const isSelected = tokenElement.classList.contains("pane-text-token-selected");
+        const isPreviousSelected = tokenElements[tokenIndex - 1]?.classList.contains("pane-text-token-selected");
+        const isNextSelected = tokenElements[tokenIndex + 1]?.classList.contains("pane-text-token-selected");
+        if (isSelected && !isPreviousSelected) {
+          tokenElement.classList.add("pane-text-token-selected-start");
+        }
+        if (isSelected && !isNextSelected) {
+          tokenElement.classList.add("pane-text-token-selected-end");
+        }
+      });
+    };
+    const clearSelection = () => {
+      if (!lastSelectionRef.current) {
+        return;
+      }
+      lastSelectionRef.current = "";
+      onSelectionChange([]);
+    };
+    const handleSelectionChange = () => {
+      const contentElement = textContentRef.current;
+      const selection = window.getSelection();
+      if (!contentElement || !selection || selection.rangeCount === 0) {
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const isSelectionInsideText = contentElement.contains(range.startContainer) && contentElement.contains(range.endContainer);
+      if (!isSelectionInsideText) {
+        return;
+      }
+      if (selection.isCollapsed) {
+        return;
+      }
+      const tokenElements = Array.from(contentElement.querySelectorAll(".pane-text-token"));
+      const anchorTokenElement = getTokenElementFromNode(selection.anchorNode);
+      const focusTokenElement = getTokenElementFromNode(selection.focusNode);
+      const selectedTokenElement = [anchorTokenElement, focusTokenElement].find((tokenElement) => !!tokenElement && contentElement.contains(tokenElement) && !!(tokenElement.textContent || "").trim()) || tokenElements.find((tokenElement) => range.intersectsNode(tokenElement) && !!(tokenElement.textContent || "").trim()) || null;
+      if (!selectedTokenElement) {
+        updateSelectedTokenStyles(null);
+        clearSelection();
+        return;
+      }
+      const selectedWord = (selectedTokenElement.textContent || "").trim();
+      const nextSelectionKey = selectedWord;
+      if (!nextSelectionKey) {
+        updateSelectedTokenStyles(null);
+        clearSelection();
+        return;
+      }
+      const normalizedRange = document.createRange();
+      normalizedRange.selectNodeContents(selectedTokenElement);
+      selection.removeAllRanges();
+      selection.addRange(normalizedRange);
+      updateSelectedTokenStyles(normalizedRange);
+      if (nextSelectionKey === lastSelectionRef.current) {
+        return;
+      }
+      lastSelectionRef.current = nextSelectionKey;
+      onSelectionChange([selectedWord]);
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+    };
+  }, [onSelectionChange, shouldRenderSelectableOutput]);
+  const selectToken = (tokenElement) => {
+    const selection = window.getSelection();
+    if (!selection) {
+      return;
+    }
+    const range = document.createRange();
+    range.selectNodeContents(tokenElement);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+  const clearSelectableOutputSelection = () => {
+    if (!onSelectionChange) {
+      return;
+    }
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    const contentElement = textContentRef.current;
+    if (contentElement) {
+      const tokenElements = Array.from(contentElement.querySelectorAll(".pane-text-token"));
+      tokenElements.forEach((tokenElement) => {
+        tokenElement.classList.remove("pane-text-token-selected");
+        tokenElement.classList.remove("pane-text-token-selected-start");
+        tokenElement.classList.remove("pane-text-token-selected-end");
+      });
+    }
+    if (!lastSelectionRef.current) {
+      return;
+    }
+    lastSelectionRef.current = "";
+    onSelectionChange([]);
+  };
+  import_react.useEffect(() => {
+    if (!shouldRenderSelectableOutput) {
+      return;
+    }
+    clearSelectableOutputSelection();
+  }, [shouldRenderSelectableOutput, value]);
   return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("section", {
     className: paneClassName,
     "aria-labelledby": showHeader ? id : undefined,
@@ -17202,7 +17348,39 @@ var TextPane = ({
           children: title
         }, undefined, false, undefined, this)
       }, undefined, false, undefined, this) : null,
-      /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("textarea", {
+      shouldRenderSelectableOutput ? /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("div", {
+        ref: textContentRef,
+        className: "pane-text-content pane-text-content-selectable",
+        role: "textbox",
+        "aria-label": ariaLabel,
+        onMouseDown: (event) => {
+          const tokenElement = event.target.closest(".pane-text-token");
+          const isWordToken = !!tokenElement && !!(tokenElement.textContent || "").trim();
+          if (!isWordToken) {
+            clearSelectableOutputSelection();
+          }
+        },
+        children: selectableTokens.map((token, tokenIndex) => {
+          const isWhitespaceToken = !token.trim();
+          const tokenClassName = isWhitespaceToken ? "pane-text-token pane-text-token-space" : "pane-text-token";
+          return /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("span", {
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("span", {
+                className: tokenClassName,
+                onMouseDown: (event) => {
+                  if (isWhitespaceToken) {
+                    return;
+                  }
+                  event.preventDefault();
+                  selectToken(event.currentTarget);
+                },
+                children: token
+              }, undefined, false, undefined, this),
+              shouldUseWordJoiner && tokenIndex < selectableTokens.length - 1 ? selectionWordJoiner : null
+            ]
+          }, `${token}-${tokenIndex}`, true, undefined, this);
+        })
+      }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime3.jsxDEV("textarea", {
         ref: (node) => {
           localTextareaRef.current = node;
           if (textareaRef) {
@@ -17225,9 +17403,6 @@ var TextPane = ({
           setText(nextValue);
           setDesiredText(nextValue);
           onChange?.(nextValue);
-        },
-        style: {
-          textAlign: "center"
         }
       }, undefined, false, undefined, this),
       afterTextarea,
@@ -17335,6 +17510,9 @@ var getTranslateWsUrl = () => {
   return hostname === "localhost" ? "http://localhost:5001/api/ws" : "https://piggo-translate-production.up.railway.app/api/ws";
 };
 var normalizeText = (text) => text.replace(/\s+/g, " ").trim();
+var isSpaceSeparatedLanguage = (language) => !language.toLowerCase().includes("chinese") && !language.toLowerCase().includes("japanese");
+var joinOutputWords = (words, targetLanguage) => words.join(isSpaceSeparatedLanguage(targetLanguage) ? " " : "");
+var joinTransliterationWords = (words) => words.join(" ");
 var isEditableElement = (element) => {
   if (!(element instanceof HTMLElement)) {
     return false;
@@ -17351,10 +17529,14 @@ var getRequestSignature = ({ text, targetLanguage, model }) => {
   const normalizedText = normalizeText(text);
   return `${model}::${normalizedText}::${targetLanguage}`;
 };
+var getDefinitionRequestSignature = (word, targetLanguage, model) => {
+  return `${model}::${targetLanguage}::${word}`;
+};
+var definitionCacheMaxItems = 10;
 var App = () => {
   const [inputText, setInputText] = import_react3.useState("");
-  const [outputText, setOutputText] = import_react3.useState("");
-  const [outputTransliteration, setOutputTransliteration] = import_react3.useState("");
+  const [outputWords, setOutputWords] = import_react3.useState([]);
+  const [outputTransliteration, setOutputTransliteration] = import_react3.useState([]);
   const [isTransliterationVisible, setIsTransliterationVisible] = import_react3.useState(true);
   const [errorText, setErrorText] = import_react3.useState("");
   const [isTranslating, setIsTranslating] = import_react3.useState(false);
@@ -17366,6 +17548,9 @@ var App = () => {
   const [debouncedRequest, setDebouncedRequest] = import_react3.useState(null);
   const [targetLanguage, setTargetLanguage] = import_react3.useState(languageOptions[1].value);
   const [selectedModel, setSelectedModel] = import_react3.useState("openai");
+  const [selectedOutputWords, setSelectedOutputWords] = import_react3.useState([]);
+  const [wordDefinitions, setWordDefinitions] = import_react3.useState([]);
+  const [isDefinitionLoading, setIsDefinitionLoading] = import_react3.useState(false);
   const socketRef = import_react3.useRef(null);
   const inputTextareaRef = import_react3.useRef(null);
   const pendingInputSelectionRef = import_react3.useRef(null);
@@ -17377,6 +17562,11 @@ var App = () => {
   });
   const currentNormalizedInputTextRef = import_react3.useRef("");
   const lastRequestedSignatureRef = import_react3.useRef("");
+  const latestDefinitionsRequestIdRef = import_react3.useRef("");
+  const lastDefinitionRequestSignatureRef = import_react3.useRef("");
+  const selectedOutputWordsRef = import_react3.useRef([]);
+  const definitionCacheRef = import_react3.useRef({});
+  const definitionCacheOrderRef = import_react3.useRef([]);
   const normalizedInputText = normalizeText(inputText);
   const hasInputText = !!normalizedInputText;
   const isSpinnerVisible = isTranslating && !!latestRequestSnapshot.id && normalizedInputText === latestRequestSnapshot.normalizedInputText;
@@ -17402,8 +17592,59 @@ var App = () => {
       targetLanguage: requestInput.targetLanguage,
       model: requestInput.model
     };
-    console.log("Sending translate request", request);
     socket.send(JSON.stringify(request));
+  };
+  const sendDefinitionsRequest = (word) => {
+    const socket = socketRef.current;
+    if (!word || !socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    const requestSignature = getDefinitionRequestSignature(word, targetLanguage, selectedModel);
+    if (lastDefinitionRequestSignatureRef.current === requestSignature) {
+      return;
+    }
+    requestCounterRef.current += 1;
+    const requestId = `${Date.now()}-${requestCounterRef.current}`;
+    latestDefinitionsRequestIdRef.current = requestId;
+    lastDefinitionRequestSignatureRef.current = requestSignature;
+    setIsDefinitionLoading(true);
+    const request = {
+      type: "translate.definitions.request",
+      requestId,
+      word,
+      targetLanguage,
+      model: selectedModel
+    };
+    socket.send(JSON.stringify(request));
+  };
+  const getCachedDefinitions = (words) => {
+    const uniqueWords = Array.from(new Set(words));
+    return uniqueWords.map((word) => ({
+      word,
+      definition: definitionCacheRef.current[word] || ""
+    })).filter((entry) => !!entry.definition);
+  };
+  const getMissingDefinitionWords = (words) => {
+    const uniqueWords = Array.from(new Set(words));
+    const cachedWordSet = new Set(getCachedDefinitions(uniqueWords).map((entry) => entry.word));
+    return uniqueWords.filter((word) => !cachedWordSet.has(word));
+  };
+  const writeDefinitionsToCache = (definitions) => {
+    definitions.forEach(({ word, definition }) => {
+      if (!word || !definition) {
+        return;
+      }
+      definitionCacheRef.current[word] = definition;
+      definitionCacheOrderRef.current = definitionCacheOrderRef.current.filter((cachedWord) => cachedWord !== word);
+      definitionCacheOrderRef.current.push(word);
+      while (definitionCacheOrderRef.current.length > definitionCacheMaxItems) {
+        const oldestWord = definitionCacheOrderRef.current.shift();
+        if (!oldestWord) {
+          return;
+        }
+        delete definitionCacheRef.current[oldestWord];
+      }
+    });
   };
   import_react3.useEffect(() => {
     let isDisposed = false;
@@ -17442,6 +17683,26 @@ var App = () => {
         if (message.type === "ready") {
           return;
         }
+        if (message.type === "translate.definitions.success") {
+          if (message.requestId !== latestDefinitionsRequestIdRef.current) {
+            return;
+          }
+          writeDefinitionsToCache(message.definitions);
+          const selectedWords = selectedOutputWordsRef.current;
+          setWordDefinitions(getCachedDefinitions(selectedWords));
+          const missingWords = getMissingDefinitionWords(selectedWords);
+          if (missingWords.length) {
+            sendDefinitionsRequest(missingWords[0]);
+          } else {
+            setIsDefinitionLoading(false);
+          }
+          return;
+        }
+        if (message.type === "translate.error" && message.requestId && message.requestId === latestDefinitionsRequestIdRef.current) {
+          setWordDefinitions([]);
+          setIsDefinitionLoading(false);
+          return;
+        }
         const latestRequestId = latestRequestRef.current.id;
         const latestRequestInput = latestRequestRef.current.normalizedInputText;
         const currentInput = currentNormalizedInputTextRef.current;
@@ -17451,8 +17712,17 @@ var App = () => {
         }
         setIsTranslating(false);
         if (message.type === "translate.success") {
-          setOutputText(message.text);
+          const selection = window.getSelection();
+          if (selection) {
+            selection.removeAllRanges();
+          }
+          setOutputWords(message.words);
           setOutputTransliteration(message.transliteration);
+          setSelectedOutputWords([]);
+          setWordDefinitions([]);
+          setIsDefinitionLoading(false);
+          latestDefinitionsRequestIdRef.current = "";
+          lastDefinitionRequestSignatureRef.current = "";
           setErrorText("");
           return;
         }
@@ -17473,10 +17743,13 @@ var App = () => {
         }
         setIsSocketOpen(false);
         setIsTranslating(false);
+        setIsDefinitionLoading(false);
         latestRequestRef.current = { id: "", normalizedInputText: "" };
         setLatestRequestSnapshot(latestRequestRef.current);
         currentNormalizedInputTextRef.current = "";
         lastRequestedSignatureRef.current = "";
+        latestDefinitionsRequestIdRef.current = "";
+        lastDefinitionRequestSignatureRef.current = "";
         reconnectTimeoutIdRef.current = window.setTimeout(() => {
           connectSocket();
         }, 500);
@@ -17496,6 +17769,9 @@ var App = () => {
       }
     };
   }, []);
+  import_react3.useEffect(() => {
+    selectedOutputWordsRef.current = selectedOutputWords;
+  }, [selectedOutputWords]);
   import_react3.useEffect(() => {
     const textarea = inputTextareaRef.current;
     const pendingSelection = pendingInputSelectionRef.current;
@@ -17542,13 +17818,18 @@ var App = () => {
     const trimmedText = inputText.trim();
     currentNormalizedInputTextRef.current = normalizedInputText;
     if (!trimmedText) {
-      setOutputText("");
-      setOutputTransliteration("");
+      setOutputWords([]);
+      setOutputTransliteration([]);
+      setSelectedOutputWords([]);
+      setWordDefinitions([]);
+      setIsDefinitionLoading(false);
       setErrorText("");
       setDebouncedRequest(null);
       latestRequestRef.current = { id: "", normalizedInputText: "" };
       setLatestRequestSnapshot(latestRequestRef.current);
       lastRequestedSignatureRef.current = "";
+      latestDefinitionsRequestIdRef.current = "";
+      lastDefinitionRequestSignatureRef.current = "";
       return;
     }
     const timeoutId = window.setTimeout(() => {
@@ -17565,13 +17846,18 @@ var App = () => {
   import_react3.useEffect(() => {
     const trimmedText = inputText.trim();
     if (!trimmedText) {
-      setOutputText("");
-      setOutputTransliteration("");
+      setOutputWords([]);
+      setOutputTransliteration([]);
+      setSelectedOutputWords([]);
+      setWordDefinitions([]);
+      setIsDefinitionLoading(false);
       setErrorText("");
       setDebouncedRequest(null);
       latestRequestRef.current = { id: "", normalizedInputText: "" };
       setLatestRequestSnapshot(latestRequestRef.current);
       lastRequestedSignatureRef.current = "";
+      latestDefinitionsRequestIdRef.current = "";
+      lastDefinitionRequestSignatureRef.current = "";
       return;
     }
     setDebouncedRequest({
@@ -17590,8 +17876,53 @@ var App = () => {
     }
     sendTranslateRequest(debouncedRequest);
   }, [debouncedRequest, isSocketOpen]);
+  import_react3.useEffect(() => {
+    if (!selectedOutputWords.length) {
+      setWordDefinitions([]);
+      setIsDefinitionLoading(false);
+      latestDefinitionsRequestIdRef.current = "";
+      lastDefinitionRequestSignatureRef.current = "";
+      return;
+    }
+    const uniqueWords = Array.from(new Set(selectedOutputWords));
+    const cachedDefinitions = getCachedDefinitions(uniqueWords);
+    setWordDefinitions(cachedDefinitions);
+    const missingWords = getMissingDefinitionWords(uniqueWords);
+    if (!missingWords.length) {
+      setIsDefinitionLoading(false);
+      latestDefinitionsRequestIdRef.current = "";
+      lastDefinitionRequestSignatureRef.current = "";
+      return;
+    }
+    if (!isSocketOpen) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      sendDefinitionsRequest(missingWords[0]);
+    }, 200);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [selectedOutputWords, isSocketOpen, selectedModel, targetLanguage]);
+  const definitionByWord = new Map(wordDefinitions.map((entry) => [entry.word, entry.definition]));
+  const transliterationByWord = new Map;
+  outputWords.forEach((word, index) => {
+    if (transliterationByWord.has(word)) {
+      return;
+    }
+    const transliteration = outputTransliteration[index];
+    if (transliteration) {
+      transliterationByWord.set(word, transliteration);
+    }
+  });
   return /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("main", {
     children: [
+      /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("img", {
+        src: "piggo.svg",
+        alt: "",
+        "aria-hidden": "true",
+        className: "title-icon fade-in"
+      }, undefined, false, undefined, this),
       /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("h1", {
         children: "Piggo Translate"
       }, undefined, false, undefined, this),
@@ -17600,7 +17931,7 @@ var App = () => {
         "aria-label": "Translator workspace",
         children: [
           !isSocketOpen ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
-            className: "pane-stack-connection-dot long-fade-in",
+            className: "pane-stack-connection-dot fade-in",
             "aria-hidden": "true"
           }, undefined, false, undefined, this) : null,
           /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(TextPane, {
@@ -17614,6 +17945,10 @@ var App = () => {
             autoFocus: true,
             textareaRef: inputTextareaRef,
             onChange: setInputText,
+            afterTextarea: hasInputText && isSpinnerVisible ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
+              className: "spinner pane-spinner",
+              "aria-hidden": "true"
+            }, undefined, false, undefined, this) : null,
             readOnly: false
           }, undefined, false, undefined, this),
           /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(TextPane, {
@@ -17623,19 +17958,38 @@ var App = () => {
             className: hasInputText ? undefined : "pane-transparent",
             placeholder: "",
             ariaLabel: "Translated text",
-            value: hasInputText ? outputText : "",
+            value: hasInputText ? joinOutputWords(outputWords, targetLanguage) : "",
+            selectionWords: hasInputText ? outputWords : [],
+            selectionWordJoiner: isSpaceSeparatedLanguage(targetLanguage) ? " " : "",
             autoFocus: false,
             footer: hasInputText ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(Transliteration, {
-              value: outputTransliteration,
+              value: joinTransliterationWords(outputTransliteration),
               isVisible: isTransliterationVisible,
               onToggle: () => setIsTransliterationVisible((value) => !value)
             }, undefined, false, undefined, this) : null,
-            readOnly: false
+            readOnly: true,
+            enableTokenSelection: true,
+            onSelectionChange: (selectionWords) => {
+              setSelectedOutputWords(selectionWords);
+            }
           }, undefined, false, undefined, this),
-          hasInputText && isSpinnerVisible ? /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {
-            className: "spinner pane-stack-spinner",
-            "aria-hidden": "true"
-          }, undefined, false, undefined, this) : null
+          selectedOutputWords.map((word, index) => {
+            const definition = definitionByWord.get(word) || "";
+            const transliteration = transliterationByWord.get(word) || "";
+            const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word;
+            const paneValue = definition ? `${wordWithTransliteration} — ${definition}` : wordWithTransliteration;
+            return /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(TextPane, {
+              id: `definition-pane-${index}-title`,
+              title: "",
+              showHeader: false,
+              className: "pane-definition fade-in",
+              placeholder: "",
+              ariaLabel: `Definition for ${word}`,
+              value: paneValue,
+              autoFocus: false,
+              readOnly: true
+            }, `${word}-${index}`, false, undefined, this);
+          })
         ]
       }, undefined, true, undefined, this),
       /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("span", {

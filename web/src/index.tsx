@@ -602,6 +602,9 @@ const App = () => {
           autoFocus
           textareaRef={inputTextareaRef}
           onChange={setInputText}
+          afterTextarea={hasInputText && isSpinnerVisible ? (
+            <span className="spinner pane-spinner" aria-hidden="true" />
+          ) : null}
           readOnly={false}
         />
 
@@ -652,9 +655,6 @@ const App = () => {
           )
         })}
 
-        {hasInputText && isSpinnerVisible ? (
-          <span className="spinner pane-stack-spinner" aria-hidden="true" />
-        ) : null}
       </section>
 
       {/* <div className="pane-switch-row" aria-label="Model selection">

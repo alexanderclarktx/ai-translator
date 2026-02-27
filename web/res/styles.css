@@ -284,15 +284,6 @@ main {
   transition: height 500ms ease;
 }
 
-.pane-stack-spinner {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  z-index: 1;
-  border-color: rgba(0, 0, 0, 0.2);
-  border-top-color: #000000;
-}
-
 .pane {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(16, 24, 32, 0.12);
@@ -301,7 +292,17 @@ main {
   flex-direction: column;
   min-width: 0;
   cursor: initial;
+  position: relative;
   transition: height 500ms ease, transform 500ms ease, background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
+}
+
+.pane-spinner {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 1;
+  border-color: rgba(0, 0, 0, 0.2);
+  border-top-color: #000000;
 }
 
 .fade-in {
