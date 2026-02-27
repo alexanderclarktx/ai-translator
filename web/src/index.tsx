@@ -31,6 +31,7 @@ const isSpaceSeparatedLanguage = (language: string) =>
   !language.toLowerCase().includes("japanese")
 const joinOutputWords = (words: string[], targetLanguage: string) =>
   words.join(isSpaceSeparatedLanguage(targetLanguage) ? " " : "")
+const joinTransliterationWords = (words: string[]) => words.join(" ")
 
 const isEditableElement = (element: Element | null) => {
   if (!(element instanceof HTMLElement)) {
@@ -64,7 +65,7 @@ const getDefinitionRequestSignature = (
 const App = () => {
   const [inputText, setInputText] = useState("")
   const [outputWords, setOutputWords] = useState<string[]>([])
-  const [outputTransliteration, setOutputTransliteration] = useState("")
+  const [outputTransliteration, setOutputTransliteration] = useState<string[]>([])
   const [isTransliterationVisible, setIsTransliterationVisible] = useState(true)
   const [errorText, setErrorText] = useState("")
   const [isTranslating, setIsTranslating] = useState(false)
@@ -389,7 +390,7 @@ const App = () => {
 
     if (!trimmedText) {
       setOutputWords([])
-      setOutputTransliteration("")
+      setOutputTransliteration([])
       setSelectedOutputWords([])
       setWordDefinitions([])
       setIsDefinitionLoading(false)
@@ -422,7 +423,7 @@ const App = () => {
 
     if (!trimmedText) {
       setOutputWords([])
-      setOutputTransliteration("")
+      setOutputTransliteration([])
       setSelectedOutputWords([])
       setWordDefinitions([])
       setIsDefinitionLoading(false)
@@ -483,6 +484,19 @@ const App = () => {
   const definitionByWord = new Map(
     wordDefinitions.map((entry) => [entry.word, entry.definition])
   )
+  const transliterationByWord = new Map<string, string>()
+
+  outputWords.forEach((word, index) => {
+    if (transliterationByWord.has(word)) {
+      return
+    }
+
+    const transliteration = outputTransliteration[index]
+
+    if (transliteration) {
+      transliterationByWord.set(word, transliteration)
+    }
+  })
 
   return (
     <main>
@@ -532,7 +546,7 @@ const App = () => {
           autoFocus={false}
           footer={hasInputText ? (
             <Transliteration
-              value={outputTransliteration}
+              value={joinTransliterationWords(outputTransliteration)}
               isVisible={isTransliterationVisible}
               onToggle={() => setIsTransliterationVisible((value) => !value)}
             />
@@ -546,7 +560,9 @@ const App = () => {
 
         {selectedOutputWords.map((word, index) => {
           const definition = definitionByWord.get(word) || ""
-          const paneValue = definition ? `${word} — ${definition}` : word
+          const transliteration = transliterationByWord.get(word) || ""
+          const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word
+          const paneValue = definition ? `${wordWithTransliteration} — ${definition}` : wordWithTransliteration
 
           return (
             <TextPane

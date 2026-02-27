@@ -29,7 +29,7 @@ type TranslateWsSuccessMessage = {
   type: "translate.success"
   requestId: string
   words: string[]
-  transliteration: string
+  transliteration: string[]
 }
 
 type TranslateWsDefinitionsSuccessMessage = {

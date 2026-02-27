@@ -16,17 +16,23 @@ type AnthropicMessageResponse = {
 const translationOutputSchema = {
   type: "object",
   properties: {
-    translation: {
-      type: "string",
-      description: "The translated text only, with no explanation"
+    words: {
+      type: "array",
+      items: {
+        type: "string"
+      },
+      description: "Translated output split into word tokens in order"
     },
     transliteration: {
-      type: "string",
+      type: "array",
+      items: {
+        type: "string"
+      },
       description:
-        "Pronunciation of the translated text written in the source input alphabet/script"
+        "One pronunciation token per translated word, in the source input alphabet/script"
     }
   },
-  required: ["translation", "transliteration"],
+  required: ["words", "transliteration"],
   additionalProperties: false
 } as const
 
@@ -81,7 +87,9 @@ export const AnthropicTranslator = (): Translator => ({
             role: "user",
             content:
               `Translate the following text to ${targetLanguage}.\n` +
-              "Also provide a transliteration: the pronunciation of the translated output written using the input text's alphabet/script.\n\n" +
+              "Return a words array with one translated token per item.\n" +
+              "Return a transliteration array with one pronunciation token per translated word in the same order.\n" +
+              "Use the input text alphabet/script for transliteration (for Chinese, use pinyin).\n\n" +
               text
           }
         ],
@@ -180,34 +188,40 @@ const parseStructuredTranslation = (content?: AnthropicMessageContentBlock[]) =>
   const translation =
     parsed &&
       typeof parsed === "object" &&
-      "translation" in parsed &&
-      typeof parsed.translation === "string"
-      ? parsed.translation.trim()
-      : ""
+      "words" in parsed &&
+      Array.isArray(parsed.words)
+      ? parsed.words
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean)
+      : []
   const transliteration =
     parsed &&
       typeof parsed === "object" &&
       "transliteration" in parsed &&
-      typeof parsed.transliteration === "string"
-      ? parsed.transliteration.trim()
-      : ""
+      Array.isArray(parsed.transliteration)
+      ? parsed.transliteration
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean)
+      : []
 
-  if (!translation) {
-    throw new Error("Anthropic structured response missing 'translation'")
+  if (!translation.length) {
+    throw new Error("Anthropic structured response missing 'words'")
   }
 
-  if (!transliteration) {
+  if (!transliteration.length) {
     throw new Error("Anthropic structured response missing 'transliteration'")
   }
 
+  if (transliteration.length !== translation.length) {
+    throw new Error("Anthropic structured response must include one transliteration item per word")
+  }
+
   return {
-    words: splitTranslationWords(translation),
+    words: translation,
     transliteration
   }
-}
-
-const splitTranslationWords = (translation: string) => {
-  return translation.match(/[\p{Script=Han}]+|[^\s]+/gu) ?? [translation]
 }
 
 const parseStructuredDefinitions = (content: AnthropicMessageContentBlock[] | undefined, requestedWords: string[]) => {
