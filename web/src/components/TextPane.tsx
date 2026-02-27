@@ -234,6 +234,8 @@ const TextPane = ({
   const shouldRenderSelectableOutput = shouldRenderTokenizedOutput || !!enableContentSelection
   const [didCopy, setDidCopy] = useState(false)
   const copyFeedbackTimeoutRef = useRef<number | null>(null)
+  const [isCopySelected, setIsCopySelected] = useState(false)
+  const copySelectedTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (shouldAnimateOnMountRef.current) {
@@ -482,6 +484,10 @@ const TextPane = ({
       if (copyFeedbackTimeoutRef.current) {
         window.clearTimeout(copyFeedbackTimeoutRef.current)
       }
+
+      if (copySelectedTimeoutRef.current) {
+        window.clearTimeout(copySelectedTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -581,7 +587,9 @@ const TextPane = ({
       {enableCopyButton ? (
         <button
           type="button"
-          className={`pane-copy-button${didCopy ? " pane-copy-button-copied" : ""}`}
+          className={`pane-copy-button${didCopy ? " pane-copy-button-copied" : ""}${isCopySelected ? " pane-copy-button-selected" : ""}`}
+          aria-label="Copy output text"
+          title={didCopy ? "Copied" : "Copy"}
           onMouseDown={(event) => {
             event.preventDefault()
           }}
@@ -593,6 +601,15 @@ const TextPane = ({
             }
 
             setDidCopy(true)
+            setIsCopySelected(true)
+
+            if (copySelectedTimeoutRef.current) {
+              window.clearTimeout(copySelectedTimeoutRef.current)
+            }
+
+            copySelectedTimeoutRef.current = window.setTimeout(() => {
+              setIsCopySelected(false)
+            }, 200)
 
             if (copyFeedbackTimeoutRef.current) {
               window.clearTimeout(copyFeedbackTimeoutRef.current)
