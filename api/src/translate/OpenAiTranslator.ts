@@ -321,7 +321,8 @@ const buildDefinitionPrompt = (word: string, targetLanguage: string) => {
     "Return only valid JSON with exactly this shape:\n" +
     `{"definition":"..."}\n` +
     "Keep the definition under 20 words.\n" +
-    "If the word is composed of multiple parts, break down each part (simply as possible)" +
+    "If the word is composed of multiple component words, break down each component.\n" +
+    "Do not include the word itself in the definition.\n" +
     "Do not include markdown or code fences.\n\n"
   )
 }

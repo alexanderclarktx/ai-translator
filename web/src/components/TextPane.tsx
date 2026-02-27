@@ -67,11 +67,14 @@ const TextPane = ({
   const [text, setText] = useState(value)
   const [desiredText, setDesiredText] = useState(value)
   const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ")
-  const selectableTokens =
-    selectionWords && selectionWords.length
-      ? selectionWords
-      : text.match(selectableOutputTokenPattern) ?? []
-  const shouldUseWordJoiner = !!selectionWords && selectionWords.length > 1
+  const shouldUseSelectionWords =
+    !!selectionWords &&
+    selectionWords.length > 0 &&
+    text === desiredText
+  const selectableTokens = shouldUseSelectionWords
+    ? selectionWords
+    : text.match(selectableOutputTokenPattern) ?? []
+  const shouldUseWordJoiner = shouldUseSelectionWords && selectionWords.length > 1
   const shouldRenderSelectableOutput = !!enableTokenSelection
 
   useEffect(() => {
@@ -198,8 +201,6 @@ const TextPane = ({
       const selection = window.getSelection()
 
       if (!contentElement || !selection || selection.rangeCount === 0) {
-        updateSelectedTokenStyles(null)
-        clearSelection()
         return
       }
 
@@ -209,14 +210,10 @@ const TextPane = ({
         contentElement.contains(range.endContainer)
 
       if (!isSelectionInsideText) {
-        updateSelectedTokenStyles(null)
-        clearSelection()
         return
       }
 
       if (selection.isCollapsed) {
-        updateSelectedTokenStyles(null)
-        clearSelection()
         return
       }
 
@@ -284,6 +281,41 @@ const TextPane = ({
     selection.addRange(range)
   }
 
+  const clearSelectableOutputSelection = () => {
+    if (!onSelectionChange) {
+      return
+    }
+
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+
+    const contentElement = textContentRef.current
+
+    if (contentElement) {
+      const tokenElements = Array.from(contentElement.querySelectorAll<HTMLSpanElement>(".pane-text-token"))
+      tokenElements.forEach((tokenElement) => {
+        tokenElement.classList.remove("pane-text-token-selected")
+        tokenElement.classList.remove("pane-text-token-selected-start")
+        tokenElement.classList.remove("pane-text-token-selected-end")
+      })
+    }
+
+    if (!lastSelectionRef.current) {
+      return
+    }
+
+    lastSelectionRef.current = ""
+    onSelectionChange([])
+  }
+
+  useEffect(() => {
+    if (!shouldRenderSelectableOutput) {
+      return
+    }
+
+    clearSelectableOutputSelection()
+  }, [shouldRenderSelectableOutput, value])
+
   return (
     <section
       className={paneClassName}
@@ -302,6 +334,14 @@ const TextPane = ({
           className="pane-text-content pane-text-content-selectable"
           role="textbox"
           aria-label={ariaLabel}
+          onMouseDown={(event) => {
+            const tokenElement = (event.target as Element).closest<HTMLSpanElement>(".pane-text-token")
+            const isWordToken = !!tokenElement && !!(tokenElement.textContent || "").trim()
+
+            if (!isWordToken) {
+              clearSelectableOutputSelection()
+            }
+          }}
         >
           {selectableTokens.map((token, tokenIndex) => {
             const isWhitespaceToken = !token.trim()
