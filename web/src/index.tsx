@@ -1,8 +1,10 @@
+import {
+  LanguageOption, TextPane, Transliteration, DefinitionCache,
+  normalizeDefinitionWord, Client, ClientApi, RequestSnapshot
+} from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
-import { LanguageOption, TextPane, Transliteration, DefinitionCache, normalizeDefinitionWord } from "@template/web"
 import { useEffect, useRef, useState } from "react"
 import { createRoot } from "react-dom/client"
-import { Client, ClientApi, RequestSnapshot } from "./Client"
 
 const languageOptions: LanguageOption[] = [
   { label: "English", value: "English" },
