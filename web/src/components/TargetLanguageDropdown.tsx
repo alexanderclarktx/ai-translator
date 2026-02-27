@@ -8,26 +8,30 @@ type TargetLanguageDropdownProps = {
 }
 
 const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: TargetLanguageDropdownProps) => {
-  const [isDismissed, setIsDismissed] = useState(false)
-  const selectedLanguageLabel =
-    options.find((option) => option.value === targetLanguage)?.label || targetLanguage
+  const selectedLanguageLabel = options.find((option) => option.value === targetLanguage)?.label || targetLanguage
   const unselectedOptions = options.filter((option) => option.value !== targetLanguage)
+
+  const [show, setShow] = useState(false)
 
   return (
     <section
-      className={`input-pane-language-menu${isDismissed ? " input-pane-language-menu-dismissed" : ""}`}
+      className={`input-pane-language-menu${show ? " input-pane-language-menu-dismissed" : ""}`}
       aria-label="Target language selector"
       onMouseLeave={() => {
-        setIsDismissed(false)
+        setShow(false)
       }}
     >
       <button
         type="button"
         className="input-pane-target-language fade-in"
+        onMouseDown={() => {
+          // if (!show) setShow(true)
+        }}
         onMouseEnter={() => {
-          if (isDismissed) {
-            setIsDismissed(false)
-          }
+          // if (show) {
+          //   setShow(false)
+          // }
+          // console.log("mouseenter")
         }}
       >
         {selectedLanguageLabel}
@@ -44,7 +48,9 @@ const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: TargetLan
               className="input-pane-target-language-option"
               data-selected="false"
               onClick={() => {
-                setIsDismissed(true)
+                // setIsDismissed(true)
+                console.log("option click")
+                setShow(false)
                 onSelect(option.value)
               }}
             >
