@@ -103,6 +103,8 @@ const App = () => {
   const targetLanguageRef = useRef(targetLanguage)
   const selectedModelRef = useRef(selectedModel)
   const definitionCacheRef = useRef(DefinitionCache())
+  const headerSectionRef = useRef<HTMLElement | null>(null)
+  const paneStackRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -111,6 +113,40 @@ const App = () => {
 
     return () => {
       window.clearTimeout(timeoutId)
+    }
+  }, [])
+
+  useEffect(() => {
+    const headerSection = headerSectionRef.current
+    const paneStack = paneStackRef.current
+
+    if (!headerSection || !paneStack) {
+      return
+    }
+
+    const updatePaneStackMarginTop = () => {
+      const minimumGapFromHeader = 16
+      const headerBottom = headerSection.getBoundingClientRect().bottom
+      const paneStackHeight = paneStack.getBoundingClientRect().height
+      const centeredTop = Math.max((window.innerHeight - paneStackHeight) / 2, 0)
+      const targetTop = Math.max(centeredTop, headerBottom + minimumGapFromHeader)
+      const marginTop = Math.max(targetTop - headerBottom - 40, 0)
+
+      paneStack.style.marginTop = `${marginTop}px`
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      updatePaneStackMarginTop()
+    })
+
+    resizeObserver.observe(headerSection)
+    resizeObserver.observe(paneStack)
+    window.addEventListener("resize", updatePaneStackMarginTop)
+    updatePaneStackMarginTop()
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", updatePaneStackMarginTop)
     }
   }, [])
   const normalizedInputText = normalizeText(inputText)
@@ -362,7 +398,7 @@ const App = () => {
 
   return (
     <main>
-      <section style={{
+      <section ref={headerSectionRef} style={{
         display: "flex",
         alignItems: "center",
         gap: "0.5rem",
@@ -387,7 +423,7 @@ const App = () => {
         }}
       /> */}
 
-      <section className="pane-stack" aria-label="Translator workspace">
+      <section ref={paneStackRef} className="pane-stack" aria-label="Translator workspace">
         {!isSocketOpen && isConnectionDotDelayComplete ? (
           <span className="pane-stack-connection-dot fade-in" aria-hidden="true" />
         ) : null}
