@@ -416,22 +416,24 @@ const App = () => {
           <span className="pane-stack-connection-dot fade-in" aria-hidden="true" />
         ) : null}
 
-        <TextPane
-          id="input-pane-title"
-          title="Input"
-          showHeader={false}
-          className="fade-in"
-          placeholder=""
-          ariaLabel="Text to translate"
-          value={inputText}
-          autoFocus
-          textareaRef={inputTextareaRef}
-          onChange={setInputText}
-          afterTextarea={hasInputText && isSpinnerVisible ? (
-            <span className="spinner pane-spinner" aria-hidden="true" />
-          ) : null}
-          readOnly={false}
-        />
+        <section className="input-pane-block fade-in" aria-label="Input language pane">
+          <p className="input-pane-target-language">{targetLanguage}</p>
+          <TextPane
+            id="input-pane-title"
+            title="Input"
+            showHeader={false}
+            placeholder=""
+            ariaLabel="Text to translate"
+            value={inputText}
+            autoFocus
+            textareaRef={inputTextareaRef}
+            onChange={setInputText}
+            afterTextarea={hasInputText && isSpinnerVisible ? (
+              <span className="spinner pane-spinner" aria-hidden="true" />
+            ) : null}
+            readOnly={false}
+          />
+        </section>
 
         {hasOutputWords ? (
           <TextPane

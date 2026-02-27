@@ -301,6 +301,24 @@ main {
   -ms-overflow-style: none; */
 }
 
+.input-pane-block {
+  width: 99%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.input-pane-target-language {
+  margin: 0;
+  margin-right: 2px;
+  font-size: 1rem;
+  text-align: right;
+  font-family: 'Courier New', Courier, monospace;
+  color: white;
+  letter-spacing: 0.02em;
+}
+
 /* .pane-stack::-webkit-scrollbar {
   display: none;
 } */
@@ -355,7 +373,7 @@ main {
 
 .pane-definition .pane-textarea {
   text-align: left;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
 }
 
 .pane-header {
