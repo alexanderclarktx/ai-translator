@@ -62,6 +62,8 @@ const getDefinitionRequestSignature = (
   return `${model}::${targetLanguage}::${words.join("\u0000")}`
 }
 
+const definitionCacheMaxItems = 10
+
 const App = () => {
   const [inputText, setInputText] = useState("")
   const [outputWords, setOutputWords] = useState<string[]>([])
@@ -97,6 +99,9 @@ const App = () => {
   const lastRequestedSignatureRef = useRef("")
   const latestDefinitionsRequestIdRef = useRef("")
   const lastDefinitionRequestSignatureRef = useRef("")
+  const selectedOutputWordsRef = useRef<string[]>([])
+  const definitionCacheRef = useRef<Record<string, string>>({})
+  const definitionCacheOrderRef = useRef<string[]>([])
   const normalizedInputText = normalizeText(inputText)
   const hasInputText = !!normalizedInputText
   const isSpinnerVisible =
@@ -176,6 +181,38 @@ const App = () => {
     socket.send(JSON.stringify(request))
   }
 
+  const getCachedDefinitions = (words: string[]) => {
+    const uniqueWords = Array.from(new Set(words))
+    return uniqueWords
+      .map((word) => ({
+        word,
+        definition: definitionCacheRef.current[word] || ""
+      }))
+      .filter((entry) => !!entry.definition)
+  }
+
+  const writeDefinitionsToCache = (definitions: TranslateWordDefinition[]) => {
+    definitions.forEach(({ word, definition }) => {
+      if (!word || !definition) {
+        return
+      }
+
+      definitionCacheRef.current[word] = definition
+      definitionCacheOrderRef.current = definitionCacheOrderRef.current.filter((cachedWord) => cachedWord !== word)
+      definitionCacheOrderRef.current.push(word)
+
+      while (definitionCacheOrderRef.current.length > definitionCacheMaxItems) {
+        const oldestWord = definitionCacheOrderRef.current.shift()
+
+        if (!oldestWord) {
+          return
+        }
+
+        delete definitionCacheRef.current[oldestWord]
+      }
+    })
+  }
+
   useEffect(() => {
     let isDisposed = false
 
@@ -229,7 +266,8 @@ const App = () => {
             return
           }
 
-          setWordDefinitions(message.definitions)
+          writeDefinitionsToCache(message.definitions)
+          setWordDefinitions(getCachedDefinitions(selectedOutputWordsRef.current))
           setIsDefinitionLoading(false)
           return
         }
@@ -324,6 +362,10 @@ const App = () => {
       }
     }
   }, [])
+
+  useEffect(() => {
+    selectedOutputWordsRef.current = selectedOutputWords
+  }, [selectedOutputWords])
 
   useEffect(() => {
     const textarea = inputTextareaRef.current
@@ -467,13 +509,26 @@ const App = () => {
       return
     }
 
+    const uniqueWords = Array.from(new Set(selectedOutputWords))
+    const cachedDefinitions = getCachedDefinitions(uniqueWords)
+    setWordDefinitions(cachedDefinitions)
+
+    const cachedWordSet = new Set(cachedDefinitions.map((entry) => entry.word))
+    const missingWords = uniqueWords.filter((word) => !cachedWordSet.has(word))
+
+    if (!missingWords.length) {
+      setIsDefinitionLoading(false)
+      latestDefinitionsRequestIdRef.current = ""
+      lastDefinitionRequestSignatureRef.current = ""
+      return
+    }
+
     if (!isSocketOpen) {
       return
     }
 
-    const uniqueWords = Array.from(new Set(selectedOutputWords))
     const timeoutId = window.setTimeout(() => {
-      sendDefinitionsRequest(uniqueWords)
+      sendDefinitionsRequest(missingWords)
     }, 200)
 
     return () => {

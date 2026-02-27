@@ -136,6 +136,15 @@ const TextPane = ({
       return
     }
 
+    const getTokenElementFromNode = (node: Node | null) => {
+      if (!node) {
+        return null
+      }
+
+      const element = node instanceof Element ? node : node.parentElement
+      return element?.closest<HTMLSpanElement>(".pane-text-token") ?? null
+    }
+
     const updateSelectedTokenStyles = (range: Range | null) => {
       const contentElement = textContentRef.current
 
@@ -205,25 +214,54 @@ const TextPane = ({
         return
       }
 
-      updateSelectedTokenStyles(range)
-      const tokenElements = Array.from(contentElement.querySelectorAll<HTMLSpanElement>(".pane-text-token"))
-      const selectedWords = tokenElements
-        .filter((tokenElement) => range.intersectsNode(tokenElement))
-        .map((tokenElement) => (tokenElement.textContent || "").trim())
-        .filter(Boolean)
-      const nextSelectionKey = selectedWords.join("\u0000")
-
-      if (!nextSelectionKey) {
+      if (selection.isCollapsed) {
+        updateSelectedTokenStyles(null)
         clearSelection()
         return
       }
+
+      const tokenElements = Array.from(contentElement.querySelectorAll<HTMLSpanElement>(".pane-text-token"))
+      const anchorTokenElement = getTokenElementFromNode(selection.anchorNode)
+      const focusTokenElement = getTokenElementFromNode(selection.focusNode)
+      const selectedTokenElement =
+        [anchorTokenElement, focusTokenElement].find((tokenElement) =>
+          !!tokenElement &&
+          contentElement.contains(tokenElement) &&
+          !!(tokenElement.textContent || "").trim()
+        ) ||
+        tokenElements.find((tokenElement) =>
+          range.intersectsNode(tokenElement) &&
+          !!(tokenElement.textContent || "").trim()
+        ) ||
+        null
+
+      if (!selectedTokenElement) {
+        updateSelectedTokenStyles(null)
+        clearSelection()
+        return
+      }
+
+      const selectedWord = (selectedTokenElement.textContent || "").trim()
+      const nextSelectionKey = selectedWord
+
+      if (!nextSelectionKey) {
+        updateSelectedTokenStyles(null)
+        clearSelection()
+        return
+      }
+
+      const normalizedRange = document.createRange()
+      normalizedRange.selectNodeContents(selectedTokenElement)
+      selection.removeAllRanges()
+      selection.addRange(normalizedRange)
+      updateSelectedTokenStyles(normalizedRange)
 
       if (nextSelectionKey === lastSelectionRef.current) {
         return
       }
 
       lastSelectionRef.current = nextSelectionKey
-      onSelectionChange(selectedWords)
+      onSelectionChange([selectedWord])
     }
 
     document.addEventListener("selectionchange", handleSelectionChange)
