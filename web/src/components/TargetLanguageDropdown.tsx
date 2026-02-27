@@ -10,6 +10,8 @@ type TargetLanguageDropdownProps = {
 const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: TargetLanguageDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLElement | null>(null)
+  const selectedLanguageLabel =
+    options.find((option) => option.value === targetLanguage)?.label || targetLanguage
 
   useEffect(() => {
     if (!isOpen) return
@@ -41,7 +43,7 @@ const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: TargetLan
           setIsOpen((value) => !value)
         }}
       >
-        {targetLanguage}
+        {selectedLanguageLabel}
       </button>
 
       {isOpen ? (
