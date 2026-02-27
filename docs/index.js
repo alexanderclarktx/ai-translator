@@ -17577,7 +17577,7 @@ var jsx_dev_runtime5 = __toESM(require_jsx_dev_runtime(), 1);
 var definitionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu;
 var normalizeDefinition = (word) => word.replace(definitionWordStripPattern, "");
 var getUniqueDefinitionWords = (words) => Array.from(new Set(words.map((word) => normalizeDefinition(word)).filter(Boolean)));
-var DefinitionCache = (maxItems = 10) => {
+var Cache = (maxItems = 10) => {
   const cache = {};
   let cacheOrder = [];
   const getCachedDefinitions = (words) => {
@@ -17891,7 +17891,7 @@ var App = () => {
   const selectedOutputWordsRef = import_react3.useRef([]);
   const targetLanguageRef = import_react3.useRef(targetLanguage);
   const selectedModelRef = import_react3.useRef(selectedModel);
-  const definitionCacheRef = import_react3.useRef(DefinitionCache());
+  const CacheRef = import_react3.useRef(Cache());
   const headerSectionRef = import_react3.useRef(null);
   const paneStackRef = import_react3.useRef(null);
   import_react3.useEffect(() => {
@@ -17955,10 +17955,10 @@ var App = () => {
         setErrorText(error);
       },
       onDefinitionsSuccess: (definitions) => {
-        definitionCacheRef.current.writeDefinitionsToCache(definitions);
+        CacheRef.current.writeDefinitionsToCache(definitions);
         const selectedWords = selectedOutputWordsRef.current;
-        setWordDefinitions(definitionCacheRef.current.getCachedDefinitions(selectedWords));
-        const missingWords = definitionCacheRef.current.getMissingDefinitionWords(selectedWords);
+        setWordDefinitions(CacheRef.current.getCachedDefinitions(selectedWords));
+        const missingWords = CacheRef.current.getMissingDefinitionWords(selectedWords);
         if (missingWords.length) {
           client.sendDefinitionsRequest({
             word: missingWords[0],
@@ -18088,9 +18088,9 @@ var App = () => {
       return;
     }
     const uniqueWords = Array.from(new Set(selectedOutputWords));
-    const cachedDefinitions = definitionCacheRef.current.getCachedDefinitions(uniqueWords);
+    const cachedDefinitions = CacheRef.current.getCachedDefinitions(uniqueWords);
     setWordDefinitions(cachedDefinitions);
-    const missingWords = definitionCacheRef.current.getMissingDefinitionWords(uniqueWords);
+    const missingWords = CacheRef.current.getMissingDefinitionWords(uniqueWords);
     if (!missingWords.length) {
       setIsDefinitionLoading(false);
       clientRef.current?.clearDefinitionRequestState();

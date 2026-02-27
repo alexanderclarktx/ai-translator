@@ -7,14 +7,14 @@ export const normalizeDefinition = (word: string) => word.replace(definitionWord
 const getUniqueDefinitionWords = (words: string[]) =>
   Array.from(new Set(words.map((word) => normalizeDefinition(word)).filter(Boolean)))
 
-export type DefinitionCache = {
+export type Cache = {
   getCachedDefinitions: (words: string[]) => WordDefinition[]
   getMissingDefinitionWords: (words: string[]) => string[]
   writeDefinitionsToCache: (definitions: WordDefinition[]) => void
   clear: () => void
 }
 
-export const DefinitionCache = (maxItems = 10): DefinitionCache => {
+export const Cache = (maxItems = 10): Cache => {
   const cache: Record<string, string> = {}
   let cacheOrder: string[] = []
 

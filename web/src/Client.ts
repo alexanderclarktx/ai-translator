@@ -30,7 +30,7 @@ export type ClientOptions = {
   onDefinitionsError: () => void
 }
 
-export type ClientApi = {
+export type Client = {
   connect: () => void
   dispose: () => void
   setCurrentNormalizedInputText: (normalizedInputText: string) => void
@@ -54,7 +54,7 @@ const getDefinitionRequestSignature = (word: string, targetLanguage: string, mod
   return `${model}::${targetLanguage}::${normalizeDefinition(word)}`
 }
 
-export const Client = (options: ClientOptions): ClientApi => {
+export const Client = (options: ClientOptions): Client => {
   let socket: WebSocket | null = null
   let reconnectTimeoutId: number | null = null
   let isDisposed = false

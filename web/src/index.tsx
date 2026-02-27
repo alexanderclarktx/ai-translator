@@ -1,7 +1,6 @@
 import {
-  LanguageOption, TextPane, Transliteration, DefinitionCache,
-  normalizeDefinition, Client, ClientApi, RequestSnapshot, isLocal,
-  isMobile
+  LanguageOption, TextPane, Transliteration, normalizeDefinition,
+  Cache, Client, RequestSnapshot, isLocal, isMobile
 } from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
 import { useEffect, useRef, useState } from "react"
@@ -97,13 +96,13 @@ const App = () => {
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([])
   const [isDefinitionLoading, setIsDefinitionLoading] = useState(false)
   const [isConnectionDotDelayComplete, setIsConnectionDotDelayComplete] = useState(false)
-  const clientRef = useRef<ClientApi | null>(null)
+  const clientRef = useRef<Client | null>(null)
   const inputTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const pendingInputSelectionRef = useRef<{ start: number, end: number } | null>(null)
   const selectedOutputWordsRef = useRef<string[]>([])
   const targetLanguageRef = useRef(targetLanguage)
   const selectedModelRef = useRef(selectedModel)
-  const definitionCacheRef = useRef(DefinitionCache())
+  const CacheRef = useRef(Cache())
   const headerSectionRef = useRef<HTMLElement | null>(null)
   const paneStackRef = useRef<HTMLElement | null>(null)
 
@@ -182,10 +181,10 @@ const App = () => {
         setErrorText(error)
       },
       onDefinitionsSuccess: (definitions) => {
-        definitionCacheRef.current.writeDefinitionsToCache(definitions)
+        CacheRef.current.writeDefinitionsToCache(definitions)
         const selectedWords = selectedOutputWordsRef.current
-        setWordDefinitions(definitionCacheRef.current.getCachedDefinitions(selectedWords))
-        const missingWords = definitionCacheRef.current.getMissingDefinitionWords(selectedWords)
+        setWordDefinitions(CacheRef.current.getCachedDefinitions(selectedWords))
+        const missingWords = CacheRef.current.getMissingDefinitionWords(selectedWords)
 
         if (missingWords.length) {
           client.sendDefinitionsRequest({
@@ -350,10 +349,10 @@ const App = () => {
     }
 
     const uniqueWords = Array.from(new Set(selectedOutputWords))
-    const cachedDefinitions = definitionCacheRef.current.getCachedDefinitions(uniqueWords)
+    const cachedDefinitions = CacheRef.current.getCachedDefinitions(uniqueWords)
     setWordDefinitions(cachedDefinitions)
 
-    const missingWords = definitionCacheRef.current.getMissingDefinitionWords(uniqueWords)
+    const missingWords = CacheRef.current.getMissingDefinitionWords(uniqueWords)
 
     if (!missingWords.length) {
       setIsDefinitionLoading(false)
