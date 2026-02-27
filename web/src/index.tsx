@@ -416,7 +416,7 @@ const App = () => {
           <span className="pane-stack-connection-dot fade-in" aria-hidden="true" />
         ) : null}
 
-        <section className="input-pane-block fade-in" aria-label="Input language pane">
+        {/* <section className="input-pane-block fade-in" aria-label="Input language pane"> */}
           <TargetLanguageDropdown
             options={languageOptions}
             targetLanguage={targetLanguage}
@@ -438,7 +438,7 @@ const App = () => {
             ) : null}
             readOnly={false}
           />
-        </section>
+        {/* </section> */}
 
         {hasOutputWords ? (
           <TextPane

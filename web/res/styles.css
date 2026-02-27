@@ -260,13 +260,6 @@ main {
   z-index: 2;
 }
 
-.pane-stack .pane {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(16, 24, 32, 0.12);
-  border-radius: 10px;
-  transition: height 500ms ease, transform 500ms ease, background-color 500ms ease, border-color 500ms ease;
-}
-
 .pane-stack .pane-textarea {
   min-height: 0;
   overflow: hidden;
@@ -302,7 +295,7 @@ main {
 }
 
 .input-pane-block {
-  width: 99%;
+  width: 100%;
   max-width: 600px;
   display: flex;
   flex-direction: column;
@@ -310,15 +303,16 @@ main {
 }
 
 .input-pane-language-menu {
-  width: max-content;
+  right: 5px;
+  /* width: max-content; */
   align-self: flex-end;
   display: flex;
   position: relative;
 }
 
 .input-pane-target-language {
+  position: relative;
   margin: 0;
-  margin-right: 2px;
   font-size: 1rem;
   text-align: right;
   font-family: 'Courier New', Courier, monospace;
@@ -328,7 +322,10 @@ main {
   border-bottom: 1px solid rgba(255, 255, 255, 0);
   /* border-radius: 10px; */
   background: rgba(255, 255, 255, 0);
-  padding: 0.2rem 0.65rem;
+  /* padding: 0.2rem 0.65rem; */
+  /* margin-: 0; */
+  /* padding-right: 2px; */
+  padding: 0;
   transition: background-color 200ms ease, border-color 200ms ease;
 }
 
@@ -344,45 +341,46 @@ main {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0;
+  right: 5px;
   min-width: 100%;
-  padding: 0.25rem 0;
+  padding: 0;
+  padding-bottom: 0.25rem;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  background: rgba(39, 37, 43, 0.8);
+  overflow: hidden;
+  z-index: 999;
 }
 
 .input-pane-target-language-option {
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
-  background: rgba(100, 100, 100, 0.8);
+  border: none;
+  background: transparent;
   text-align: right;
   font-family: 'Courier New', Courier, monospace;
   font-size: 1rem;
   color: white;
   letter-spacing: 0.02em;
-  padding: 0.2rem 0.65rem;
+  /* padding: 0.2rem 0.65rem; */
   text-align: center;
+  padding: 0;
+  /* padding-bottom: 0.25rem; */
+  margin: 0;
 }
 
 .input-pane-target-language-option:hover {
-  /* background: rgba(205, 205, 255, 0.8); */
-  border: 1px solid rgba(255, 255, 255, 1);
+  font-weight: 600;
 }
-/* 
-.input-pane-target-language-option[data-selected="true"] {
-  font-weight: 500;
-} */
-
-/* .pane-stack::-webkit-scrollbar {
-  display: none;
-} */
 
 .pane {
+  width: 100%;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(16, 24, 32, 0.12);
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   max-width: 600px;
-  width: 99%;
   cursor: initial;
   position: relative;
   transition: height 500ms ease, transform 500ms ease, background-color 500ms ease, border-color 500ms ease, padding 500ms ease;
@@ -431,7 +429,7 @@ main {
 .pane-header {
   padding: 0.8rem 1rem;
   border-bottom: 1px solid rgba(16, 24, 32, 0.12);
-  background: rgba(255, 255, 255, 0.6);
+  /* background: rgba(255, 255, 255, 0.6); */
 }
 
 .pane-textarea {
@@ -461,16 +459,16 @@ main {
 
 .pane-textarea[readonly] {
   background: rgba(255, 255, 255, 0.28);
-  /* cursor: default; */
   pointer-events: none;
 }
 
 .pane-text-content {
   box-sizing: border-box;
-  width: 100%;
+  /* width: 99%; */
   min-height: 0;
   border: 0;
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
   padding: 1rem;
   font: inherit;
   color: inherit;
@@ -536,7 +534,7 @@ main {
 }
 
 .transliteration-box {
-  width: 100%;
+  /* width: 99%; */
   border: 0;
   background: rgba(183, 221, 255, 0.2);
   color: #3c3519;

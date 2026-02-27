@@ -157,7 +157,7 @@ const TextPane = ({
   const initialText = shouldAnimateOnMountRef.current ? "" : value
   const [text, setText] = useState(initialText)
   const [desiredText, setDesiredText] = useState(value)
-  const paneClassName = [showHeader ? "pane" : "pane pane-no-header", className].filter(Boolean).join(" ")
+  const paneClassName = [showHeader ? "pane" : "pane", className].filter(Boolean).join(" ")
   const normalizedSelectionTokens =
     selectionTokens && selectionTokens.length
       ? selectionTokens
