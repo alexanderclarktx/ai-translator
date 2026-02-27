@@ -390,6 +390,10 @@ main {
   background: rgba(60, 60, 60, 0.1);
 }
 
+.pane-text-token-selectable.pane-text-token-selected:hover {
+  background: transparent;
+}
+
 .pane-text-content-selectable:hover ::selection {
   background: transparent;
 }
