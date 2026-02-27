@@ -324,6 +324,8 @@ const App = () => {
             selection.removeAllRanges()
           }
 
+          console.log("got translation", message.words, message.transliteration)
+
           setOutputWords(message.words)
           setOutputTransliteration(message.transliteration)
           setSelectedOutputWords([])
