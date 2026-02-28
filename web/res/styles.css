@@ -36,7 +36,7 @@ body {
   user-select: none;
   color: white;
   transition: color 500ms ease, opacity 500ms ease;
-  animation: title-fade-in 500ms ease-out both;
+  animation: fade-in-animation 500ms ease-out both;
 }
 
 .title-icon {
@@ -47,19 +47,17 @@ body {
   margin-bottom: -2px;
 }
 
-@keyframes title-fade-in {
+@keyframes fade-in-animation {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* @media (prefers-reduced-motion: reduce) {
   h1 {
     animation: none;
   }
@@ -67,7 +65,7 @@ body {
   .fade-in {
     animation: none;
   }
-}
+} */
 
 h2 {
   margin: 0;
@@ -390,7 +388,7 @@ main {
 }
 
 .fade-in {
-  animation: title-fade-in 500ms ease-out both;
+  animation: fade-in-animation 500ms ease both;
 }
 
 .input-pane-header,
@@ -471,6 +469,16 @@ main {
   word-break: break-word;
   text-align: center;
   transition: all 200ms ease;
+}
+
+.definition-pane-value-fade-in {
+  display: inline;
+  opacity: 0;
+  transition: opacity 1000ms ease;
+}
+
+.definition-pane-value-fade-in.is-visible {
+  opacity: 1;
 }
 
 .output-pane-text-content-selectable,
@@ -617,22 +625,6 @@ main {
   min-height: 1.35em;
 }
 
-@media (prefers-reduced-motion: reduce) {
-
-  .input-pane,
-  .output-pane,
-  .definition-pane,
-  .pane-stack .input-pane-textarea,
-  .pane-stack .output-pane-text-content,
-  .pane-stack .definition-pane-text-content,
-  .pane-footer,
-  .transliteration-collapsed-label,
-  .transliteration-panel,
-  .output-pane-copy-button {
-    transition: none;
-  }
-}
-
 .pane-switch-row {
   width: 100%;
   max-width: 600px;
@@ -648,22 +640,6 @@ main {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
-
-  .language-bubble,
-  .translate-button,
-  .model-switch,
-  .model-switch-thumb,
-  .model-switch-track {
-    transition: background-color 120ms linear, border-color 120ms linear,
-      box-shadow 120ms linear;
-    transform: none;
-  }
-}
-
 @media (max-width: 800px) {
   body {
     font-size: 1.2rem;
@@ -673,7 +649,7 @@ main {
     font-size: 1rem;
   }
 
-  .transliteration-text {
+  .transliteration-text.is-visible {
     font-size: 1.1rem;
     padding: 0.6rem;
   }

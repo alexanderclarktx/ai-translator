@@ -40,6 +40,8 @@ const DefinitionPane = ({
   const initialSuffixText = shouldAnimateOnMountRef.current ? "" : initialParts.suffixText
   const [text, setText] = useState(initialSuffixText)
   const [desiredText, setDesiredText] = useState(initialParts.suffixText)
+  const [fadeVersion, setFadeVersion] = useState(0)
+  const [isFadeVisible, setIsFadeVisible] = useState(false)
 
   useEffect(() => {
     if (shouldAnimateOnMountRef.current) {
@@ -56,8 +58,21 @@ const DefinitionPane = ({
     }
 
     setDesiredText(nextParts.suffixText)
+    setFadeVersion((currentVersion) => currentVersion + 1)
     previousPrefixTextRef.current = nextParts.prefixText
   }, [value])
+
+  useEffect(() => {
+    setIsFadeVisible(false)
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      setIsFadeVisible(true)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId)
+    }
+  }, [fadeVersion])
 
   useEffect(() => {
     if (!desiredText) {
@@ -110,7 +125,13 @@ const DefinitionPane = ({
         role="textbox"
         aria-label={ariaLabel}
       >
-        {`${prefixText}${text}`}
+        ${prefixText}
+        <span
+          key={fadeVersion}
+          className={`definition-pane-value-fade-in${isFadeVisible ? " is-visible" : ""}`}
+        >
+          {`${desiredText}`}
+        </span>
       </div>
     </section>
   )
