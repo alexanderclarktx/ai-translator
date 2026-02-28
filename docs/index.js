@@ -18364,7 +18364,7 @@ var App = () => {
         },
         children: [
           /* @__PURE__ */ jsx_dev_runtime7.jsxDEV("img", {
-            src: "piggo.svg",
+            src: "favicon.svg",
             alt: "",
             "aria-hidden": "true",
             className: "title-icon fade-in",

@@ -403,7 +403,7 @@ const App = () => {
         flexDirection: "column",
         left: "50%"
       }}>
-        <img src="piggo.svg" alt="" aria-hidden="true" className="title-icon fade-in" draggable={false} />
+        <img src="favicon.svg" alt="" aria-hidden="true" className="title-icon fade-in" draggable={false} />
         <p className="header-title">Piggo Translate</p>
       </section>
 
