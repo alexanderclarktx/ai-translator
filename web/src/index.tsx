@@ -81,6 +81,15 @@ const isEditableElement = (element: Element | null) => {
   return element.isContentEditable
 }
 
+const getAutoDefinitionWords = (tokens: WordToken[]) => {
+  const selectableWords = tokens
+    .filter(({ punctuation }) => !punctuation)
+    .map(({ word }) => word)
+    .filter((word) => !!normalizeDefinition(word))
+
+  return selectableWords.length === 1 ? selectableWords : []
+}
+
 const App = () => {
   const [inputText, setInputText] = useState("")
   const [outputWords, setOutputWords] = useState<WordToken[]>([])
@@ -172,6 +181,7 @@ const App = () => {
         const selection = window.getSelection()
         const activeElement = document.activeElement
         const shouldClearSelection = !isEditableElement(activeElement)
+        const autoDefinitionWords = getAutoDefinitionWords(words)
 
         if (selection && shouldClearSelection) {
           selection.removeAllRanges()
@@ -179,7 +189,7 @@ const App = () => {
 
         setOutputWords(words)
         definitionContextRef.current = joinOutputTokens(words, targetLanguageRef.current, "word")
-        setSelectedOutputWords([])
+        setSelectedOutputWords(autoDefinitionWords)
         setWordDefinitions([])
         setIsDefinitionLoading(false)
         client.clearDefinitionRequestState()

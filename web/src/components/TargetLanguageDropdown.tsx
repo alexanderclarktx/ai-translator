@@ -47,7 +47,7 @@ export const TargetLanguageDropdown = ({ options, targetLanguage, onSelect }: Pr
               aria-selected={false}
               className="input-pane-target-language-option"
               data-selected="false"
-              onClick={() => {
+              onPointerDown={() => {
                 setIsDismissed(true)
                 onSelect(option.value)
               }}
