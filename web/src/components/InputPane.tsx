@@ -6,6 +6,7 @@ type InputPaneProps = {
   placeholder: string
   ariaLabel: string
   value: string
+  maxLength?: number
   className?: string
   afterTextarea?: ReactNode
   footer?: ReactNode
@@ -15,7 +16,7 @@ type InputPaneProps = {
   textareaRef?: MutableRefObject<HTMLTextAreaElement | null>
 }
 
-const InputPane = ({ id, title, placeholder, ariaLabel, value, className, afterTextarea, footer, autoFocus, onChange, showHeader, textareaRef }: InputPaneProps) => {
+const InputPane = ({ id, title, placeholder, ariaLabel, value, maxLength, className, afterTextarea, footer, autoFocus, onChange, showHeader, textareaRef }: InputPaneProps) => {
   const localTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [text, setText] = useState(value)
   const paneClassName = ["input-pane", className].filter(Boolean).join(" ")
@@ -60,6 +61,7 @@ const InputPane = ({ id, title, placeholder, ariaLabel, value, className, afterT
         placeholder={placeholder}
         aria-label={ariaLabel}
         value={text}
+        maxLength={maxLength}
         readOnly={false}
         autoFocus={autoFocus}
         autoCorrect="off"
