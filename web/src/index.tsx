@@ -81,6 +81,15 @@ const isEditableElement = (element: Element | null) => {
   return element.isContentEditable
 }
 
+const getAutoDefinitionWords = (tokens: WordToken[]) => {
+  const selectableWords = tokens
+    .filter(({ punctuation }) => !punctuation)
+    .map(({ word }) => word)
+    .filter((word) => !!normalizeDefinition(word))
+
+  return selectableWords.length === 1 ? selectableWords : []
+}
+
 const App = () => {
   const [inputText, setInputText] = useState("")
   const [outputWords, setOutputWords] = useState<WordToken[]>([])
@@ -170,13 +179,17 @@ const App = () => {
       onLatestRequestChange: setLatestRequestSnapshot,
       onTranslateSuccess: (words) => {
         const selection = window.getSelection()
-        if (selection) {
+        const activeElement = document.activeElement
+        const shouldClearSelection = !isEditableElement(activeElement)
+        const autoDefinitionWords = getAutoDefinitionWords(words)
+
+        if (selection && shouldClearSelection) {
           selection.removeAllRanges()
         }
 
         setOutputWords(words)
         definitionContextRef.current = joinOutputTokens(words, targetLanguageRef.current, "word")
-        setSelectedOutputWords([])
+        setSelectedOutputWords(autoDefinitionWords)
         setWordDefinitions([])
         setIsDefinitionLoading(false)
         client.clearDefinitionRequestState()
@@ -250,6 +263,10 @@ const App = () => {
       if (
         event.defaultPrevented || event.isComposing || event.ctrlKey || event.altKey || event.metaKey
       ) return
+      if (event.key === "Tab") {
+        event.preventDefault()
+        return
+      }
 
       const activeElement = document.activeElement
 
@@ -308,7 +325,7 @@ const App = () => {
         targetLanguage,
         model: selectedModel
       })
-    }, isMobile() ? 700 : 400)
+    }, isMobile() ? 1000 : 400)
 
     return () => {
       window.clearTimeout(timeoutId)
@@ -509,7 +526,7 @@ const App = () => {
 
       {isLocal() && !isMobile() && (
         <span className="app-version" aria-label="App version">
-          v0.2.5
+          v0.2.6
         </span>
       )}
     </main>
