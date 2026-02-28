@@ -142,8 +142,10 @@ const App = () => {
 
       paneStack.style.marginTop = `${marginTop}px`
       const paneStackTop = paneStack.getBoundingClientRect().top
-      const maxHeight = Math.max(window.innerHeight - paneStackTop - minimumGapFromViewportBottom, 0)
-      paneStack.style.maxHeight = `${maxHeight}px`
+      // const maxHeight = Math.max(window.innerHeight - paneStackTop - minimumGapFromViewportBottom, 0)
+      // paneStack.style.maxHeight = `${maxHeight}px`
+
+      console.log("Updated pane stack margin top:", marginTop, "px")
     }
 
     const resizeObserver = new ResizeObserver(() => {
