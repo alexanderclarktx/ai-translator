@@ -1,4 +1,5 @@
 import { MutableRefObject, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { isMobile } from "web/main"
 
 const textPaneAnimationMinIntervalMs = 15
 const textPaneAnimationMaxIntervalMs = 100
@@ -576,7 +577,7 @@ const TextPane = ({
 
       {afterTextarea}
       {footer ? footer : null}
-      {enableCopyButton ? (
+      {enableCopyButton && !isMobile() ? (
         <button
           type="button"
           className={`pane-copy-button${didCopy ? " pane-copy-button-copied" : ""}${isCopySelected ? " pane-copy-button-selected" : ""}`}
