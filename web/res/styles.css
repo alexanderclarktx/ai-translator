@@ -262,11 +262,37 @@ main {
   transition: transform 220ms ease, opacity 220ms ease, font-weight 120ms ease, visibility 0s linear 220ms;
 }
 
-.input-pane,
-.output-pane,
-.definition-pane {
+.input-pane {
   width: 100%;
   background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(16, 24, 32, 0.12);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+  cursor: initial;
+  position: relative;
+  transition: height 500ms ease, transform 500ms ease, background-color 500ms ease,
+    border-color 500ms ease, padding 500ms ease;
+}
+
+.output-pane {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(16, 24, 32, 0.12);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+  cursor: initial;
+  position: relative;
+  transition: height 500ms ease, transform 500ms ease, background-color 500ms ease,
+    border-color 500ms ease, padding 500ms ease;
+}
+
+.definition-pane {
+  width: 100%;
+  background: rgba(222, 221, 247, 0.8);
   border: 1px solid rgba(16, 24, 32, 0.12);
   border-radius: 10px;
   display: flex;
