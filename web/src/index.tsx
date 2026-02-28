@@ -23,9 +23,11 @@ const languageOptions: LanguageOption[] = [
 ]
 
 const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim()
+
 const isSpaceSeparatedLanguage = (language: string) =>
   !language.toLowerCase().includes("chinese") &&
   !language.toLowerCase().includes("japanese")
+
 const noSpaceBeforePunctuationPattern = /^[.,!?;:%)\]\}»”’、。，！？；：]$/
 const noSpaceAfterPunctuationPattern = /^[(\[{«“‘]$/
 
@@ -307,7 +309,7 @@ const App = () => {
         targetLanguage,
         model: selectedModel
       })
-    }, 400)
+    }, isMobile() ? 700 : 400)
 
     return () => {
       window.clearTimeout(timeoutId)
