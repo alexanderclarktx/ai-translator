@@ -17107,7 +17107,7 @@ var import_react = __toESM(require_react(), 1);
 
 // src/components/paneUtils.ts
 var textPaneAnimationMinIntervalMs = 15;
-var textPaneAnimationMaxIntervalMs = 100;
+var textPaneAnimationMaxIntervalMs = 90;
 var textPaneAnimationFastThreshold = 24;
 var selectableOutputTokenPattern = /[\p{Script=Han}]|[^\s\p{Script=Han}]+|\s+/gu;
 var selectionWordStripPattern = /[^\p{L}\p{M}\p{N}\p{Script=Han}]+/gu;
@@ -17240,6 +17240,8 @@ var DefinitionPane = ({
   const initialSuffixText = shouldAnimateOnMountRef.current ? "" : initialParts.suffixText;
   const [text, setText] = import_react.useState(initialSuffixText);
   const [desiredText, setDesiredText] = import_react.useState(initialParts.suffixText);
+  const [fadeVersion, setFadeVersion] = import_react.useState(0);
+  const [isFadeVisible, setIsFadeVisible] = import_react.useState(false);
   import_react.useEffect(() => {
     if (shouldAnimateOnMountRef.current) {
       shouldAnimateOnMountRef.current = false;
@@ -17251,8 +17253,18 @@ var DefinitionPane = ({
       setText("");
     }
     setDesiredText(nextParts.suffixText);
+    setFadeVersion((currentVersion) => currentVersion + 1);
     previousPrefixTextRef.current = nextParts.prefixText;
   }, [value]);
+  import_react.useEffect(() => {
+    setIsFadeVisible(false);
+    const animationFrameId = window.requestAnimationFrame(() => {
+      setIsFadeVisible(true);
+    });
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, [fadeVersion]);
   import_react.useEffect(() => {
     if (!desiredText) {
       setText("");
@@ -17295,8 +17307,14 @@ var DefinitionPane = ({
         className: "definition-pane-text-content definition-pane-text-content-selectable",
         role: "textbox",
         "aria-label": ariaLabel,
-        children: `${prefixText}${text}`
-      }, undefined, false, undefined, this)
+        children: [
+          prefixText,
+          /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+            className: `definition-pane-value-fade-in${isFadeVisible ? " is-visible" : ""}`,
+            children: `${desiredText}`
+          }, fadeVersion, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this)
     ]
   }, undefined, true, undefined, this);
 };
@@ -17559,6 +17577,11 @@ var OutputPane = ({
     onSelectionChange([]);
   };
   const selectToken = (tokenElement) => {
+    const tokenSelectionWord = tokenElement.dataset.selectionWord || getSelectionWord(tokenElement.textContent || "");
+    if (tokenSelectionWord && tokenSelectionWord === lastSelectionRef.current) {
+      clearSelectableOutputSelection();
+      return;
+    }
     const selection = window.getSelection();
     if (!selection) {
       return;
@@ -17863,8 +17886,8 @@ var getTranslateWsUrl = () => {
 var getRequestSignature = ({ text, targetLanguage, model }) => {
   return `${model}::${normalizeText(text)}::${targetLanguage}`;
 };
-var getDefinitionRequestSignature = (word, targetLanguage, model) => {
-  return `${model}::${targetLanguage}::${normalizeDefinition(word)}`;
+var getDefinitionRequestSignature = (word, context, targetLanguage, model) => {
+  return `${model}::${targetLanguage}::${normalizeDefinition(word)}::${normalizeText(context)}`;
 };
 var Client = (options) => {
   let socket = null;
@@ -17926,10 +17949,11 @@ var Client = (options) => {
   };
   const sendDefinitionsRequest = (requestInput) => {
     const normalizedWord = normalizeDefinition(requestInput.word);
-    if (!normalizedWord || !socket || socket.readyState !== WebSocket.OPEN) {
+    const normalizedContext = normalizeText(requestInput.context);
+    if (!normalizedWord || !normalizedContext || !socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
-    const requestSignature = getDefinitionRequestSignature(normalizedWord, requestInput.targetLanguage, requestInput.model);
+    const requestSignature = getDefinitionRequestSignature(normalizedWord, normalizedContext, requestInput.targetLanguage, requestInput.model);
     if (lastDefinitionRequestSignature === requestSignature) {
       return;
     }
@@ -17942,6 +17966,7 @@ var Client = (options) => {
       type: "translate.definitions.request",
       requestId,
       word: normalizedWord,
+      context: normalizedContext,
       targetLanguage: requestInput.targetLanguage,
       model: requestInput.model
     };
@@ -18122,6 +18147,7 @@ var App = () => {
   const inputTextareaRef = import_react6.useRef(null);
   const pendingInputSelectionRef = import_react6.useRef(null);
   const selectedOutputWordsRef = import_react6.useRef([]);
+  const definitionContextRef = import_react6.useRef("");
   const targetLanguageRef = import_react6.useRef(targetLanguage);
   const selectedModelRef = import_react6.useRef(selectedModel);
   const CacheRef = import_react6.useRef(Cache());
@@ -18152,8 +18178,7 @@ var App = () => {
       const marginTop = Math.max(targetTop - headerBottom - 40, 0);
       paneStack.style.marginTop = `${marginTop}px`;
       const paneStackTop = paneStack.getBoundingClientRect().top;
-      const maxHeight = Math.max(window.innerHeight - paneStackTop - minimumGapFromViewportBottom, 0);
-      paneStack.style.maxHeight = `${maxHeight}px`;
+      console.log("Updated pane stack margin top:", marginTop, "px");
     };
     const resizeObserver = new ResizeObserver(() => {
       updatePaneStackMarginTop();
@@ -18180,6 +18205,7 @@ var App = () => {
           selection.removeAllRanges();
         }
         setOutputWords(words);
+        definitionContextRef.current = joinOutputTokens(words, targetLanguageRef.current, "word");
         setSelectedOutputWords([]);
         setWordDefinitions([]);
         setIsDefinitionLoading(false);
@@ -18196,6 +18222,7 @@ var App = () => {
         if (missingWords.length) {
           client.sendDefinitionsRequest({
             word: missingWords[0],
+            context: definitionContextRef.current,
             targetLanguage: targetLanguageRef.current,
             model: selectedModelRef.current
           });
@@ -18325,6 +18352,7 @@ var App = () => {
     const cachedDefinitions = CacheRef.current.getCachedDefinitions(uniqueWords);
     setWordDefinitions(cachedDefinitions);
     const missingWords = CacheRef.current.getMissingDefinitionWords(uniqueWords);
+    const definitionContext = joinOutputTokens(outputWords, targetLanguage, "word");
     if (!missingWords.length) {
       setIsDefinitionLoading(false);
       clientRef.current?.clearDefinitionRequestState();
@@ -18332,12 +18360,14 @@ var App = () => {
     }
     if (!isSocketOpen)
       return;
+    definitionContextRef.current = definitionContext;
     clientRef.current?.sendDefinitionsRequest({
       word: missingWords[0],
+      context: definitionContext,
       targetLanguage,
       model: selectedModel
     });
-  }, [selectedOutputWords, isSocketOpen, selectedModel, targetLanguage]);
+  }, [outputWords, selectedOutputWords, isSocketOpen, selectedModel, targetLanguage]);
   const definitionByWord = new Map(wordDefinitions.map((entry) => [normalizeDefinition(entry.word), entry.definition]));
   const transliterationByWord = new Map;
   outputWords.filter(({ punctuation }) => !punctuation).forEach(({ word, literal }) => {
@@ -18435,9 +18465,7 @@ var App = () => {
           selectedOutputWords.map((word, index) => {
             const normalizedWord = normalizeDefinition(word);
             const definition = definitionByWord.get(normalizedWord) || "";
-            const transliteration = transliterationByWord.get(normalizedWord || word) || "";
-            const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word;
-            const paneValue = definition ? `${wordWithTransliteration} — ${definition}` : wordWithTransliteration;
+            const paneValue = definition ? `${word} — ${definition}` : word;
             return /* @__PURE__ */ jsx_dev_runtime7.jsxDEV(DefinitionPane, {
               id: `definition-pane-${index}-title`,
               title: "",
