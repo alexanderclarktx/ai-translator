@@ -107,6 +107,7 @@ const App = () => {
   const inputTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const pendingInputSelectionRef = useRef<{ start: number, end: number } | null>(null)
   const selectedOutputWordsRef = useRef<string[]>([])
+  const definitionContextRef = useRef("")
   const targetLanguageRef = useRef(targetLanguage)
   const selectedModelRef = useRef(selectedModel)
   const CacheRef = useRef(Cache())
@@ -132,7 +133,6 @@ const App = () => {
 
     const updatePaneStackMarginTop = () => {
       const minimumGapFromHeader = 16
-      const minimumGapFromViewportBottom = 16
       const headerBottom = headerSection.getBoundingClientRect().bottom
       const paneStackHeight = paneStack.getBoundingClientRect().height
       const centeredTop = Math.max((window.innerHeight - paneStackHeight) / 2, 0)
@@ -140,9 +140,6 @@ const App = () => {
       const marginTop = Math.max(targetTop - headerBottom - 40, 0)
 
       paneStack.style.marginTop = `${marginTop}px`
-      const paneStackTop = paneStack.getBoundingClientRect().top
-      const maxHeight = Math.max(window.innerHeight - paneStackTop - minimumGapFromViewportBottom, 0)
-      paneStack.style.maxHeight = `${maxHeight}px`
     }
 
     const resizeObserver = new ResizeObserver(() => {
@@ -178,6 +175,7 @@ const App = () => {
         }
 
         setOutputWords(words)
+        definitionContextRef.current = joinOutputTokens(words, targetLanguageRef.current, "word")
         setSelectedOutputWords([])
         setWordDefinitions([])
         setIsDefinitionLoading(false)
@@ -195,6 +193,7 @@ const App = () => {
         if (missingWords.length) {
           client.sendDefinitionsRequest({
             word: missingWords[0],
+            context: definitionContextRef.current,
             targetLanguage: targetLanguageRef.current,
             model: selectedModelRef.current
           })
@@ -359,6 +358,7 @@ const App = () => {
     setWordDefinitions(cachedDefinitions)
 
     const missingWords = CacheRef.current.getMissingDefinitionWords(uniqueWords)
+    const definitionContext = joinOutputTokens(outputWords, targetLanguage, "word")
 
     if (!missingWords.length) {
       setIsDefinitionLoading(false)
@@ -368,12 +368,14 @@ const App = () => {
 
     if (!isSocketOpen) return
 
+    definitionContextRef.current = definitionContext
     clientRef.current?.sendDefinitionsRequest({
       word: missingWords[0],
+      context: definitionContext,
       targetLanguage,
       model: selectedModel
     })
-  }, [selectedOutputWords, isSocketOpen, selectedModel, targetLanguage])
+  }, [outputWords, selectedOutputWords, isSocketOpen, selectedModel, targetLanguage])
 
   const definitionByWord = new Map(
     wordDefinitions.map((entry) => [normalizeDefinition(entry.word), entry.definition])
@@ -479,9 +481,7 @@ const App = () => {
         {selectedOutputWords.map((word, index) => {
           const normalizedWord = normalizeDefinition(word)
           const definition = definitionByWord.get(normalizedWord) || ""
-          const transliteration = transliterationByWord.get(normalizedWord || word) || ""
-          const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word
-          const paneValue = definition ? `${wordWithTransliteration} — ${definition}` : wordWithTransliteration
+          const paneValue = definition ? `${word} — ${definition}` : word
 
           return (
             <DefinitionPane
@@ -509,7 +509,7 @@ const App = () => {
 
       {isLocal() && !isMobile() && (
         <span className="app-version" aria-label="App version">
-          v0.2.4
+          v0.2.5
         </span>
       )}
     </main>
