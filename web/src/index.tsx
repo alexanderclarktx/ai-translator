@@ -487,9 +487,7 @@ const App = () => {
         {selectedOutputWords.map((word, index) => {
           const normalizedWord = normalizeDefinition(word)
           const definition = definitionByWord.get(normalizedWord) || ""
-          const transliteration = transliterationByWord.get(normalizedWord || word) || ""
-          const wordWithTransliteration = transliteration ? `${word} (${transliteration})` : word
-          const paneValue = definition ? `${wordWithTransliteration} — ${definition}` : wordWithTransliteration
+          const paneValue = definition ? `${word} — ${definition}` : word
 
           return (
             <DefinitionPane
