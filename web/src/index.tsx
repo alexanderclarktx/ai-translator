@@ -250,6 +250,10 @@ const App = () => {
       if (
         event.defaultPrevented || event.isComposing || event.ctrlKey || event.altKey || event.metaKey
       ) return
+      if (event.key === "Tab") {
+        event.preventDefault()
+        return
+      }
 
       const activeElement = document.activeElement
 
