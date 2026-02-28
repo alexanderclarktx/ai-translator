@@ -1,5 +1,5 @@
 import {
-  TargetLanguageDropdown, TextPane, Transliteration, normalizeDefinition,
+  DefinitionPane, InputPane, OutputPane, TargetLanguageDropdown, Transliteration, normalizeDefinition,
   Cache, Client, RequestSnapshot, isLocal, isMobile
 } from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
@@ -403,7 +403,7 @@ const App = () => {
         flexDirection: "column",
         left: "50%"
       }}>
-        <img src="piggo.svg" alt="" aria-hidden="true" className="title-icon fade-in" draggable={false} />
+        <img src="favicon.svg" alt="" aria-hidden="true" className="title-icon fade-in" draggable={false} />
         <p className="header-title">Piggo Translate</p>
       </section>
 
@@ -427,29 +427,28 @@ const App = () => {
           onSelect={setTargetLanguage}
         />
 
-        <TextPane
+        <InputPane
           id="input-pane-title"
           title="Input"
           showHeader={false}
           placeholder=""
           ariaLabel="Text to translate"
           value={inputText}
+          maxLength={360}
           autoFocus
           textareaRef={inputTextareaRef}
           onChange={setInputText}
           afterTextarea={hasInputText && isSpinnerVisible ? (
-            <span className="spinner pane-spinner" aria-hidden="true" />
+            <span className="spinner input-pane-spinner" aria-hidden="true" />
           ) : null}
-          readOnly={false}
           className="fade-in"
         />
 
         {hasOutputWords ? (
-          <TextPane
+          <OutputPane
             id="output-pane-title"
             title="Translated Output"
             showHeader={false}
-            placeholder=""
             ariaLabel="Translated text"
             value={joinOutputTokens(outputWords, targetLanguage, "word")}
             selectionTokens={outputWords.map((token) => ({
@@ -458,7 +457,6 @@ const App = () => {
               selectable: !token.punctuation
             }))}
             selectionWordJoiner={isSpaceSeparatedLanguage(targetLanguage) ? " " : ""}
-            autoFocus={false}
             animateOnMount
             footer={(
               <Transliteration
@@ -467,10 +465,9 @@ const App = () => {
                 onToggle={() => setIsTransliterationVisible((value) => !value)}
               />
             )}
-            readOnly
-            enableTokenSelection
             enableCopyButton
             copyValue={joinOutputTokens(outputWords, targetLanguage, "word")}
+            className="fade-in"
             onSelectionChange={(selectionWords) => {
               setSelectedOutputWords(selectionWords)
             }}
@@ -485,18 +482,15 @@ const App = () => {
           const paneValue = definition ? `${wordWithTransliteration} — ${definition}` : wordWithTransliteration
 
           return (
-            <TextPane
+            <DefinitionPane
               key={`${word}-${index}`}
               id={`definition-pane-${index}-title`}
               title=""
               showHeader={false}
-              className="pane-definition fade-in"
-              placeholder=""
+              animateOnMount
+              className="fade-in"
               ariaLabel={`Definition for ${word}`}
               value={paneValue}
-              autoFocus={false}
-              readOnly
-              enableContentSelection
             />
           )
         })}
@@ -513,7 +507,7 @@ const App = () => {
 
       {isLocal() && !isMobile() && (
         <span className="app-version" aria-label="App version">
-          v0.2.2
+          v0.2.3
         </span>
       )}
     </main>
