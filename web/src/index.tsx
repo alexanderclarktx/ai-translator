@@ -487,6 +487,7 @@ const App = () => {
               id={`definition-pane-${index}-title`}
               title=""
               showHeader={false}
+              animateOnMount
               className="fade-in"
               ariaLabel={`Definition for ${word}`}
               value={paneValue}
