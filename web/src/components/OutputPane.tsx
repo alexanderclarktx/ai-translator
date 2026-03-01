@@ -21,12 +21,15 @@ type OutputPaneProps = {
   selectionWordJoiner?: string
   enableCopyButton?: boolean
   copyValue?: string
+  enableAudioButton?: boolean
+  isAudioLoading?: boolean
+  onAudioClick?: () => void
 }
 
 const OutputPane = ({
   id, title, ariaLabel, value, className, footer, showHeader, onSelectionChange,
   animateOnMount, selectionWords, selectionTokens, selectionWordJoiner = " ", enableCopyButton,
-  copyValue
+  copyValue, enableAudioButton, isAudioLoading, onAudioClick
 }: OutputPaneProps) => {
   const textContentRef = useRef<HTMLDivElement | null>(null)
   const lastSelectionRef = useRef("")
@@ -389,47 +392,72 @@ const OutputPane = ({
 
       {footer ? footer : null}
 
-      {enableCopyButton && !isMobile() ? (
-        <button
-          type="button"
-          className={`output-pane-copy-button${didCopy ? " output-pane-copy-button-copied" : ""}${isCopySelected ? " output-pane-copy-button-selected" : ""}`}
-          aria-label="Copy output text"
-          title={didCopy ? "Copied" : "Copy"}
-          onMouseDown={(event) => {
-            event.preventDefault()
-          }}
-          onClick={async () => {
-            const copied = await copyTextToClipboard(copyValue ?? value)
+      {(enableCopyButton || enableAudioButton) && !isMobile() ? (
+        <div className="output-pane-actions">
+          {enableAudioButton ? (
+            <button
+              type="button"
+              className={`output-pane-action-button${isAudioLoading ? " output-pane-action-button-loading" : ""}`}
+              aria-label="Generate speech audio"
+              title={isAudioLoading ? "Generating audio..." : "Speak"}
+              disabled={!!isAudioLoading}
+              onMouseDown={(event) => {
+                event.preventDefault()
+              }}
+              onClick={() => {
+                onAudioClick?.()
+              }}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                <path d="M15 9.5a4 4 0 0 1 0 5" />
+                <path d="M18 7a8 8 0 0 1 0 10" />
+              </svg>
+            </button>
+          ) : null}
+          {enableCopyButton ? (
+            <button
+              type="button"
+              className={`output-pane-action-button${didCopy ? " output-pane-copy-button-copied" : ""}${isCopySelected ? " output-pane-copy-button-selected" : ""}`}
+              aria-label="Copy output text"
+              title={didCopy ? "Copied" : "Copy"}
+              onMouseDown={(event) => {
+                event.preventDefault()
+              }}
+              onClick={async () => {
+                const copied = await copyTextToClipboard(copyValue ?? value)
 
-            if (!copied) {
-              return
-            }
+                if (!copied) {
+                  return
+                }
 
-            setDidCopy(true)
-            setIsCopySelected(true)
+                setDidCopy(true)
+                setIsCopySelected(true)
 
-            if (copySelectedTimeoutRef.current) {
-              window.clearTimeout(copySelectedTimeoutRef.current)
-            }
+                if (copySelectedTimeoutRef.current) {
+                  window.clearTimeout(copySelectedTimeoutRef.current)
+                }
 
-            copySelectedTimeoutRef.current = window.setTimeout(() => {
-              setIsCopySelected(false)
-            }, 200)
+                copySelectedTimeoutRef.current = window.setTimeout(() => {
+                  setIsCopySelected(false)
+                }, 200)
 
-            if (copyFeedbackTimeoutRef.current) {
-              window.clearTimeout(copyFeedbackTimeoutRef.current)
-            }
+                if (copyFeedbackTimeoutRef.current) {
+                  window.clearTimeout(copyFeedbackTimeoutRef.current)
+                }
 
-            copyFeedbackTimeoutRef.current = window.setTimeout(() => {
-              setDidCopy(false)
-            }, 1000)
-          }}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 8h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" />
-            <path d="M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1" />
-          </svg>
-        </button>
+                copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+                  setDidCopy(false)
+                }, 1000)
+              }}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 8h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" />
+                <path d="M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1" />
+              </svg>
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </section>
   )

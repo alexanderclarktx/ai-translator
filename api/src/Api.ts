@@ -44,6 +44,11 @@ const parseTranslateWsMessage = (rawMessage: unknown): { error: string } | ({
   context: string
   targetLanguage: string
   model: Model
+} | {
+  type: "translate.audio.request"
+  requestId: string
+  text: string
+  model: Model
 }) => {
   if (!rawMessage || typeof rawMessage !== "object") {
     return {
@@ -63,7 +68,8 @@ const parseTranslateWsMessage = (rawMessage: unknown): { error: string } | ({
 
   if (
     message.type !== "translate.request" &&
-    message.type !== "translate.definitions.request"
+    message.type !== "translate.definitions.request" &&
+    message.type !== "translate.audio.request"
   ) {
     return {
       error: "Unsupported websocket message type"
@@ -100,6 +106,23 @@ const parseTranslateWsMessage = (rawMessage: unknown): { error: string } | ({
       requestId: message.requestId.trim(),
       text,
       targetLanguage,
+      model: message.model === "anthropic" ? "anthropic" : "openai"
+    }
+  }
+
+  if (message.type === "translate.audio.request") {
+    const text = typeof message.text === "string" ? message.text.trim() : ""
+
+    if (!text) {
+      return {
+        error: "Websocket message must include a non-empty 'text' string"
+      }
+    }
+
+    return {
+      type: "translate.audio.request",
+      requestId: message.requestId.trim(),
+      text,
       model: message.model === "anthropic" ? "anthropic" : "openai"
     }
   }
@@ -159,6 +182,12 @@ export const createApiServer = () => {
     const translator = model === "anthropic" ? openAiTranslator : openAiTranslator
 
     return translator.getDefinitions(word, targetLanguage, context)
+  }
+
+  const getAudioWithModel = async (model: Model, text: string) => {
+    const translator = model === "anthropic" ? openAiTranslator : openAiTranslator
+
+    return translator.getAudio(text)
   }
 
   const server = Bun.serve({
@@ -232,6 +261,36 @@ export const createApiServer = () => {
 
             const messageText =
               error instanceof Error ? error.message : "Translation failed"
+
+            ws.send(JSON.stringify({
+              type: "translate.error",
+              requestId: parsedMessage.requestId,
+              error: messageText
+            }))
+          }
+
+          return
+        }
+
+        if (parsedMessage.type === "translate.audio.request") {
+          try {
+            const audioBlob = await getAudioWithModel(
+              parsedMessage.model,
+              parsedMessage.text
+            )
+            const audioBuffer = Buffer.from(await audioBlob.arrayBuffer())
+
+            ws.send(JSON.stringify({
+              type: "translate.audio.success",
+              requestId: parsedMessage.requestId,
+              audioBase64: audioBuffer.toString("base64"),
+              mimeType: audioBlob.type || "audio/pcm"
+            }))
+          } catch (error) {
+            logServerError(`WS audio ${parsedMessage.requestId}`, error)
+
+            const messageText =
+              error instanceof Error ? error.message : "Text-to-speech failed"
 
             ws.send(JSON.stringify({
               type: "translate.error",

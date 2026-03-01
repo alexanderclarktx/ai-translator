@@ -1,5 +1,6 @@
 import { Translator } from "./Translator"
 import { WordDefinition, WordToken } from "@template/core"
+import { decodeBase64PcmChunksToWavBlob } from "../utils/AudioUtils"
 
 type OpenAiRealtimeServerEvent = {
   type?: string
@@ -45,11 +46,17 @@ export const OpenAiTranslator = (): Translator => {
 
   const model = "gpt-realtime"
   const timeoutMs = 3000
+  const defaultAudioVoice = "alloy"
+  const defaultAudioFormat = "pcm16"
 
   type QueuedRequest = {
     prompt: string
     instructions: string
-    resolve: (value: string) => void
+    modalities: ("text" | "audio")[]
+    audioVoice?: string
+    maxOutputTokens?: number
+    resolveText?: (value: string) => void
+    resolveAudio?: (value: Blob) => void
     reject: (error: Error) => void
   }
 
@@ -57,6 +64,7 @@ export const OpenAiTranslator = (): Translator => {
     startedAt: number
     timeout: ReturnType<typeof setTimeout>
     streamedText: string
+    streamedAudioChunks: string[]
     receivedDoneEvent: boolean
   }
 
@@ -88,7 +96,7 @@ export const OpenAiTranslator = (): Translator => {
     void processNextRequest()
   }
 
-  const settleActiveSuccess = (rawText: string) => {
+  const settleActiveSuccess = () => {
     if (!activeRequest) {
       return
     }
@@ -101,7 +109,29 @@ export const OpenAiTranslator = (): Translator => {
 
     activeRequest = null
     clearTimeout(currentRequest.timeout)
-    currentRequest.resolve(rawText)
+
+    if (currentRequest.resolveAudio) {
+      const audioBlob = decodeBase64PcmChunksToWavBlob(currentRequest.streamedAudioChunks)
+
+      if (!audioBlob.size) {
+        currentRequest.reject(new Error("OpenAI realtime returned empty audio output"))
+      } else {
+        currentRequest.resolveAudio(audioBlob)
+      }
+
+      void processNextRequest()
+      return
+    }
+
+    const doneText = currentRequest.streamedText.trim()
+
+    if (!doneText) {
+      currentRequest.reject(new Error("OpenAI realtime returned empty text output"))
+      void processNextRequest()
+      return
+    }
+
+    currentRequest.resolveText?.(doneText)
     void processNextRequest()
   }
 
@@ -153,6 +183,22 @@ export const OpenAiTranslator = (): Translator => {
       return
     }
 
+    if (
+      parsedEvent.type === "response.audio.delta" &&
+      typeof parsedEvent.delta === "string"
+    ) {
+      activeRequest.streamedAudioChunks.push(parsedEvent.delta)
+      return
+    }
+
+    if (
+      parsedEvent.type === "response.output_audio.delta" &&
+      typeof parsedEvent.delta === "string"
+    ) {
+      activeRequest.streamedAudioChunks.push(parsedEvent.delta)
+      return
+    }
+
     if (parsedEvent.type !== "response.done") {
       return
     }
@@ -162,8 +208,14 @@ export const OpenAiTranslator = (): Translator => {
     const failedStatus =
       parsedEvent.response?.status &&
       parsedEvent.response.status !== "completed"
+    const isAudioRequest = activeRequest.modalities.includes("audio")
+    const hasAudioOutput = activeRequest.streamedAudioChunks.length > 0
+    const isAcceptableIncompleteAudioResponse =
+      parsedEvent.response?.status === "incomplete" &&
+      isAudioRequest &&
+      hasAudioOutput
 
-    if (failedStatus) {
+    if (failedStatus && !isAcceptableIncompleteAudioResponse) {
       settleActiveError(
         new Error(
           parsedEvent.response?.status_details?.error?.message ||
@@ -174,7 +226,11 @@ export const OpenAiTranslator = (): Translator => {
     }
 
     const doneText = getResponseTextFromDoneEvent(parsedEvent)
-    settleActiveSuccess(activeRequest.streamedText || doneText)
+    if (!activeRequest.streamedText.trim() && doneText) {
+      activeRequest.streamedText = doneText
+    }
+
+    settleActiveSuccess()
   }
 
   const ensureConnected = async (): Promise<WebSocket> => {
@@ -188,7 +244,11 @@ export const OpenAiTranslator = (): Translator => {
       return connectPromise
     }
 
-    console.log(`[openai] connecting to realtime websocket (model ${model})`)
+    const apiKeyPreview =
+      apiKey.length > 10 ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : "[redacted]"
+    console.log(
+      `[openai] connecting to realtime websocket (model ${model}, key ${apiKeyPreview})`
+    )
 
     connectPromise = new Promise<WebSocket>((resolve, reject) => {
       const nextSocket = new WebSocket(
@@ -205,10 +265,12 @@ export const OpenAiTranslator = (): Translator => {
       const onOpen = () => {
         isWsOpen = true
         ws = nextSocket
+        console.log("[openai] realtime websocket opened")
         resolve(nextSocket)
       }
 
-      const onErrorBeforeOpen = () => {
+      const onErrorBeforeOpen = (event: unknown) => {
+        console.error("[openai] websocket error before open", event)
         resetConnection()
         reject(new Error("OpenAI realtime websocket connection failed"))
       }
@@ -218,10 +280,14 @@ export const OpenAiTranslator = (): Translator => {
       nextSocket.addEventListener("message", (event) => {
         onRealtimeMessage(event.data)
       })
-      nextSocket.addEventListener("error", () => {
+      nextSocket.addEventListener("error", (event) => {
+        console.error("[openai] websocket runtime error", event)
         settleActiveError(new Error("OpenAI realtime websocket error"))
       })
-      nextSocket.addEventListener("close", () => {
+      nextSocket.addEventListener("close", (event) => {
+        console.log(
+          `[openai] websocket closed code=${event.code} reason='${event.reason}' clean=${event.wasClean}`
+        )
         const closedBeforeCompletion =
           !!activeRequest && !activeRequest.receivedDoneEvent
 
@@ -269,9 +335,15 @@ export const OpenAiTranslator = (): Translator => {
       JSON.stringify({
         type: "response.create",
         response: {
-          modalities: ["text"],
-          max_output_tokens: 1024,
-          instructions: activeRequest.instructions
+          modalities: activeRequest.modalities,
+          max_output_tokens: activeRequest.maxOutputTokens || 1024,
+          instructions: activeRequest.instructions,
+          ...(activeRequest.modalities.includes("audio")
+            ? {
+              voice: activeRequest.audioVoice || defaultAudioVoice,
+              output_audio_format: defaultAudioFormat
+            }
+            : {})
         }
       })
     )
@@ -301,6 +373,7 @@ export const OpenAiTranslator = (): Translator => {
         }
       }, timeoutMs),
       streamedText: "",
+      streamedAudioChunks: [],
       receivedDoneEvent: false
     }
 
@@ -316,7 +389,25 @@ export const OpenAiTranslator = (): Translator => {
       queuedRequests.push({
         prompt,
         instructions,
-        resolve,
+        modalities: ["text"],
+        resolveText: resolve,
+        maxOutputTokens: 1024,
+        reject: (error) => reject(error)
+      })
+
+      void processNextRequest()
+    })
+  }
+
+  const runOpenAiRealtimeAudioRequest = async (text: string) => {
+    return await new Promise<Blob>((resolve, reject) => {
+      queuedRequests.push({
+        prompt: buildAudioPrompt(text),
+        instructions: "You are a text-to-speech engine. Speak the provided text exactly, with natural pacing.",
+        modalities: ["audio", "text"],
+        audioVoice: defaultAudioVoice,
+        resolveAudio: resolve,
+        maxOutputTokens: 256,
         reject: (error) => reject(error)
       })
 
@@ -340,6 +431,15 @@ export const OpenAiTranslator = (): Translator => {
       )
 
       return parseStructuredDefinitions(rawText, word).definitions
+    },
+    getAudio: async (text) => {
+      const trimmedText = text.trim()
+
+      if (!trimmedText) {
+        throw new Error("Text-to-speech input cannot be empty")
+      }
+
+      return await runOpenAiRealtimeAudioRequest(trimmedText)
     }
   }
 }
@@ -431,6 +531,14 @@ const buildDefinitionPrompt = (word: string, targetLanguage: string, context: st
     "Do not include the word itself!!\n" +
     "Do not repeat the context!!\n" +
     "Do not include markdown or code fences.\n\n"
+  )
+}
+
+const buildAudioPrompt = (text: string) => {
+  return (
+    "Speak the exact text below. Do not add or remove words.\n" +
+    "-------------------------- text below this line -----------------------------\n\n" +
+    text
   )
 }
 
