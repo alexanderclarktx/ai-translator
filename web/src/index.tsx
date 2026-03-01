@@ -1,6 +1,6 @@
 import {
   DefinitionPane, InputPane, OutputPane, TargetLanguageDropdown, Transliteration,
-  normalizeDefinition, Cache, Client, RequestSnapshot, isLocal, isMobile
+  normalizeDefinition, Cache, AudioCache, Client, RequestSnapshot, isLocal, isMobile
 } from "@template/web"
 import { Model, WordDefinition, WordToken } from "@template/core"
 import { useEffect, useRef, useState } from "react"
@@ -111,6 +111,8 @@ const App = () => {
   const [selectedOutputWords, setSelectedOutputWords] = useState<string[]>([])
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([])
   const [isDefinitionLoading, setIsDefinitionLoading] = useState(false)
+  const [isAudioLoading, setIsAudioLoading] = useState(false)
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const [isConnectionDotDelayComplete, setIsConnectionDotDelayComplete] = useState(false)
   const clientRef = useRef<Client | null>(null)
   const inputTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -120,8 +122,73 @@ const App = () => {
   const targetLanguageRef = useRef(targetLanguage)
   const selectedModelRef = useRef(selectedModel)
   const CacheRef = useRef(Cache())
+  const audioCacheRef = useRef(AudioCache())
   const headerSectionRef = useRef<HTMLElement | null>(null)
   const paneStackRef = useRef<HTMLElement | null>(null)
+  const audioSourceUrlRef = useRef("")
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null)
+  const pendingAudioRequestTextRef = useRef("")
+
+  const clearAudioPlayback = () => {
+    setIsAudioPlaying(false)
+
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause()
+      activeAudioRef.current.src = ""
+      activeAudioRef.current = null
+    }
+
+    if (!audioSourceUrlRef.current) {
+      return
+    }
+
+    URL.revokeObjectURL(audioSourceUrlRef.current)
+    audioSourceUrlRef.current = ""
+  }
+
+  const createAudioUrlFromBase64 = (audioBase64: string, mimeType: string) => {
+    const binaryAudio = atob(audioBase64)
+    const audioBytes = new Uint8Array(binaryAudio.length)
+
+    for (let index = 0; index < binaryAudio.length; index += 1) {
+      audioBytes[index] = binaryAudio.charCodeAt(index)
+    }
+
+    const audioBlob = new Blob([audioBytes], { type: mimeType || "audio/pcm" })
+    return URL.createObjectURL(audioBlob)
+  }
+
+  const playAudio = (audioBase64: string, mimeType: string) => {
+    const nextAudioSourceUrl = createAudioUrlFromBase64(audioBase64, mimeType)
+    clearAudioPlayback()
+    audioSourceUrlRef.current = nextAudioSourceUrl
+
+    const audio = new Audio(nextAudioSourceUrl)
+    activeAudioRef.current = audio
+    setIsAudioPlaying(true)
+    audio.onended = () => {
+      setIsAudioPlaying(false)
+
+      if (activeAudioRef.current === audio) {
+        activeAudioRef.current = null
+      }
+
+      if (audioSourceUrlRef.current === nextAudioSourceUrl) {
+        URL.revokeObjectURL(nextAudioSourceUrl)
+        audioSourceUrlRef.current = ""
+      }
+    }
+    audio.onerror = () => {
+      setErrorText("Unable to play audio")
+      clearAudioPlayback()
+    }
+
+    void audio.play().catch(() => {
+      setErrorText("Unable to play audio")
+      clearAudioPlayback()
+    })
+    setErrorText("")
+  }
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -130,6 +197,12 @@ const App = () => {
 
     return () => {
       window.clearTimeout(timeoutId)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      clearAudioPlayback()
     }
   }, [])
 
@@ -188,6 +261,8 @@ const App = () => {
         }
 
         setOutputWords(words)
+        clearAudioPlayback()
+        setIsAudioLoading(false)
         definitionContextRef.current = joinOutputTokens(words, targetLanguageRef.current, "word")
         setSelectedOutputWords(autoDefinitionWords)
         setWordDefinitions([])
@@ -195,6 +270,7 @@ const App = () => {
         client.clearDefinitionRequestState()
       },
       onTranslateError: (error) => {
+        setIsAudioLoading(false)
         setErrorText(error)
       },
       onDefinitionsSuccess: (definitions) => {
@@ -217,6 +293,24 @@ const App = () => {
       onDefinitionsError: () => {
         setWordDefinitions([])
         setIsDefinitionLoading(false)
+      },
+      onAudioLoadingChange: setIsAudioLoading,
+      onAudioSuccess: (audioBase64, mimeType) => {
+        if (pendingAudioRequestTextRef.current) {
+          audioCacheRef.current.set({
+            text: pendingAudioRequestTextRef.current,
+            audioBase64,
+            mimeType
+          })
+        }
+
+        playAudio(audioBase64, mimeType)
+        pendingAudioRequestTextRef.current = ""
+      },
+      onAudioError: (errorText) => {
+        setIsAudioLoading(false)
+        setErrorText(errorText)
+        pendingAudioRequestTextRef.current = ""
       }
     })
 
@@ -313,6 +407,8 @@ const App = () => {
       setSelectedOutputWords([])
       setWordDefinitions([])
       setIsDefinitionLoading(false)
+      setIsAudioLoading(false)
+      clearAudioPlayback()
       setErrorText("")
       setDebouncedRequest(null)
       clientRef.current?.clearAllRequestState()
@@ -341,6 +437,8 @@ const App = () => {
       setSelectedOutputWords([])
       setWordDefinitions([])
       setIsDefinitionLoading(false)
+      setIsAudioLoading(false)
+      clearAudioPlayback()
       setErrorText("")
       setDebouncedRequest(null)
       clientRef.current?.clearAllRequestState()
@@ -480,14 +578,38 @@ const App = () => {
             selectionWordJoiner={isSpaceSeparatedLanguage(targetLanguage) ? " " : ""}
             animateOnMount
             footer={(
-              <Transliteration
-                value={joinOutputTokens(outputWords, targetLanguage, "literal", { forceSpaceSeparated: true })}
-                isVisible={isTransliterationVisible}
-                onToggle={() => setIsTransliterationVisible((value) => !value)}
-              />
+              <>
+                <Transliteration
+                  value={joinOutputTokens(outputWords, targetLanguage, "literal", { forceSpaceSeparated: true })}
+                  isVisible={isTransliterationVisible}
+                  onToggle={() => setIsTransliterationVisible((value) => !value)}
+                />
+              </>
             )}
             enableCopyButton
             copyValue={joinOutputTokens(outputWords, targetLanguage, "word")}
+            enableAudioButton={!isAudioPlaying}
+            isAudioLoading={isAudioLoading}
+            onAudioClick={() => {
+              const outputText = joinOutputTokens(outputWords, targetLanguage, "word")
+
+              if (!outputText.trim()) {
+                return
+              }
+
+              const cachedAudio = audioCacheRef.current.get(outputText)
+
+              if (cachedAudio) {
+                playAudio(cachedAudio.audioBase64, cachedAudio.mimeType)
+                return
+              }
+
+              pendingAudioRequestTextRef.current = outputText
+              clientRef.current?.sendAudioRequest({
+                text: outputText,
+                model: selectedModelRef.current
+              })
+            }}
             className="fade-in"
             onSelectionChange={(selectionWords) => {
               setSelectedOutputWords(selectionWords)
@@ -526,7 +648,7 @@ const App = () => {
 
       {isLocal() && !isMobile() && (
         <span className="app-version" aria-label="App version">
-          v0.2.6
+          v0.2.7
         </span>
       )}
     </main>

@@ -17395,7 +17395,10 @@ var OutputPane = ({
   selectionTokens,
   selectionWordJoiner = " ",
   enableCopyButton,
-  copyValue
+  copyValue,
+  enableAudioButton,
+  isAudioLoading,
+  onAudioClick
 }) => {
   const textContentRef = import_react3.useRef(null);
   const lastSelectionRef = import_react3.useRef("");
@@ -17663,47 +17666,83 @@ var OutputPane = ({
         })
       }, undefined, false, undefined, this),
       footer ? footer : null,
-      enableCopyButton && !isMobile() ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
-        type: "button",
-        className: `output-pane-copy-button${didCopy ? " output-pane-copy-button-copied" : ""}${isCopySelected ? " output-pane-copy-button-selected" : ""}`,
-        "aria-label": "Copy output text",
-        title: didCopy ? "Copied" : "Copy",
-        onMouseDown: (event) => {
-          event.preventDefault();
-        },
-        onClick: async () => {
-          const copied = await copyTextToClipboard(copyValue ?? value);
-          if (!copied) {
-            return;
-          }
-          setDidCopy(true);
-          setIsCopySelected(true);
-          if (copySelectedTimeoutRef.current) {
-            window.clearTimeout(copySelectedTimeoutRef.current);
-          }
-          copySelectedTimeoutRef.current = window.setTimeout(() => {
-            setIsCopySelected(false);
-          }, 200);
-          if (copyFeedbackTimeoutRef.current) {
-            window.clearTimeout(copyFeedbackTimeoutRef.current);
-          }
-          copyFeedbackTimeoutRef.current = window.setTimeout(() => {
-            setDidCopy(false);
-          }, 1000);
-        },
-        children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("svg", {
-          viewBox: "0 0 24 24",
-          "aria-hidden": "true",
-          children: [
-            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
-              d: "M8 8h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z"
-            }, undefined, false, undefined, this),
-            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
-              d: "M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"
-            }, undefined, false, undefined, this)
-          ]
-        }, undefined, true, undefined, this)
-      }, undefined, false, undefined, this) : null
+      (enableCopyButton || enableAudioButton) && !isMobile() ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "output-pane-actions",
+        children: [
+          enableAudioButton ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+            type: "button",
+            className: `output-pane-action-button${isAudioLoading ? " output-pane-action-button-loading" : ""}`,
+            "aria-label": "Generate speech audio",
+            title: isAudioLoading ? "Generating audio..." : "Speak",
+            disabled: !!isAudioLoading,
+            onMouseDown: (event) => {
+              event.preventDefault();
+            },
+            onClick: () => {
+              onAudioClick?.();
+            },
+            children: isAudioLoading ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+              className: "spinner output-pane-action-spinner",
+              "aria-hidden": "true"
+            }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("svg", {
+              viewBox: "0 0 24 24",
+              "aria-hidden": "true",
+              children: [
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
+                  d: "M11 5 6 9H3v6h3l5 4V5Z"
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
+                  d: "M15 9.5a4 4 0 0 1 0 5"
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
+                  d: "M18 7a8 8 0 0 1 0 10"
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this)
+          }, undefined, false, undefined, this) : null,
+          enableCopyButton ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+            type: "button",
+            className: `output-pane-action-button${didCopy ? " output-pane-copy-button-copied" : ""}${isCopySelected ? " output-pane-copy-button-selected" : ""}`,
+            "aria-label": "Copy output text",
+            title: didCopy ? "Copied" : "Copy",
+            onMouseDown: (event) => {
+              event.preventDefault();
+            },
+            onClick: async () => {
+              const copied = await copyTextToClipboard(copyValue ?? value);
+              if (!copied) {
+                return;
+              }
+              setDidCopy(true);
+              setIsCopySelected(true);
+              if (copySelectedTimeoutRef.current) {
+                window.clearTimeout(copySelectedTimeoutRef.current);
+              }
+              copySelectedTimeoutRef.current = window.setTimeout(() => {
+                setIsCopySelected(false);
+              }, 200);
+              if (copyFeedbackTimeoutRef.current) {
+                window.clearTimeout(copyFeedbackTimeoutRef.current);
+              }
+              copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+                setDidCopy(false);
+              }, 1000);
+            },
+            children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("svg", {
+              viewBox: "0 0 24 24",
+              "aria-hidden": "true",
+              children: [
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
+                  d: "M8 8h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z"
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
+                  d: "M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this)
+          }, undefined, false, undefined, this) : null
+        ]
+      }, undefined, true, undefined, this) : null
     ]
   }, undefined, true, undefined, this);
 };
@@ -17890,16 +17929,45 @@ var Cache = (maxItems = 10) => {
     clear
   };
 };
-// src/Client.ts
+// src/AudioCache.ts
 var normalizeText = (text) => text.replace(/\s+/g, " ").trim();
+var AudioCache = () => {
+  const cache = {};
+  const get = (text) => {
+    const key = normalizeText(text);
+    return cache[key] || null;
+  };
+  const set = (params) => {
+    const key = normalizeText(params.text);
+    if (!key || !params.audioBase64) {
+      return;
+    }
+    cache[key] = {
+      audioBase64: params.audioBase64,
+      mimeType: params.mimeType
+    };
+  };
+  const clear = () => {
+    Object.keys(cache).forEach((key) => {
+      delete cache[key];
+    });
+  };
+  return {
+    get,
+    set,
+    clear
+  };
+};
+// src/Client.ts
+var normalizeText2 = (text) => text.replace(/\s+/g, " ").trim();
 var getTranslateWsUrl = () => {
   return isLocal() ? "http://localhost:5001/api/ws" : "https://piggo-translate-production.up.railway.app/api/ws";
 };
 var getRequestSignature = ({ text, targetLanguage, model }) => {
-  return `${model}::${normalizeText(text)}::${targetLanguage}`;
+  return `${model}::${normalizeText2(text)}::${targetLanguage}`;
 };
 var getDefinitionRequestSignature = (word, context, targetLanguage, model) => {
-  return `${model}::${targetLanguage}::${normalizeDefinition(word)}::${normalizeText(context)}`;
+  return `${model}::${targetLanguage}::${normalizeDefinition(word)}::${normalizeText2(context)}`;
 };
 var Client = (options) => {
   let socket = null;
@@ -17914,6 +17982,7 @@ var Client = (options) => {
   let lastRequestedSignature = "";
   let latestDefinitionsRequestId = "";
   let lastDefinitionRequestSignature = "";
+  let latestAudioRequestId = "";
   const clearReconnectTimeout = () => {
     if (reconnectTimeoutId === null) {
       return;
@@ -17925,12 +17994,17 @@ var Client = (options) => {
     latestDefinitionsRequestId = "";
     lastDefinitionRequestSignature = "";
   };
+  const clearAudioRequestState = () => {
+    latestAudioRequestId = "";
+    options.onAudioLoadingChange(false);
+  };
   const clearAllRequestState = () => {
     latestRequest = { id: "", normalizedInputText: "" };
     options.onLatestRequestChange(latestRequest);
     currentNormalizedInputText = "";
     lastRequestedSignature = "";
     clearDefinitionRequestState();
+    clearAudioRequestState();
   };
   const sendTranslateRequest = (requestInput) => {
     if (!requestInput.text || !socket || socket.readyState !== WebSocket.OPEN) {
@@ -17946,7 +18020,7 @@ var Client = (options) => {
     options.onTranslatingChange(true);
     latestRequest = {
       id: requestId,
-      normalizedInputText: normalizeText(requestInput.text)
+      normalizedInputText: normalizeText2(requestInput.text)
     };
     options.onLatestRequestChange(latestRequest);
     lastRequestedSignature = requestSignature;
@@ -17961,7 +18035,7 @@ var Client = (options) => {
   };
   const sendDefinitionsRequest = (requestInput) => {
     const normalizedWord = normalizeDefinition(requestInput.word);
-    const normalizedContext = normalizeText(requestInput.context);
+    const normalizedContext = normalizeText2(requestInput.context);
     if (!normalizedWord || !normalizedContext || !socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
@@ -17980,6 +18054,23 @@ var Client = (options) => {
       word: normalizedWord,
       context: normalizedContext,
       targetLanguage: requestInput.targetLanguage,
+      model: requestInput.model
+    };
+    socket.send(JSON.stringify(request));
+  };
+  const sendAudioRequest = (requestInput) => {
+    const normalizedText = normalizeText2(requestInput.text);
+    if (!normalizedText || !socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    requestCounter += 1;
+    const requestId = `${Date.now()}-${requestCounter}`;
+    latestAudioRequestId = requestId;
+    options.onAudioLoadingChange(true);
+    const request = {
+      type: "translate.audio.request",
+      requestId,
+      text: normalizedText,
       model: requestInput.model
     };
     socket.send(JSON.stringify(request));
@@ -18019,8 +18110,20 @@ var Client = (options) => {
         options.onDefinitionsSuccess(message.definitions);
         return;
       }
+      if (message.type === "translate.audio.success") {
+        if (message.requestId !== latestAudioRequestId) {
+          return;
+        }
+        options.onAudioLoadingChange(false);
+        options.onAudioSuccess(message.audioBase64, message.mimeType);
+        return;
+      }
       if (message.type === "translate.error" && message.requestId && message.requestId === latestDefinitionsRequestId) {
         options.onDefinitionsError();
+        return;
+      }
+      if (message.type === "translate.error" && message.requestId && message.requestId === latestAudioRequestId) {
+        options.onAudioError(message.error || "Audio generation failed");
         return;
       }
       const isActiveCurrentRequest = !!latestRequest.id && !!latestRequest.normalizedInputText && !!currentNormalizedInputText && currentNormalizedInputText === latestRequest.normalizedInputText && (!message.requestId || message.requestId === latestRequest.id);
@@ -18053,6 +18156,7 @@ var Client = (options) => {
       options.onSocketOpenChange(false);
       options.onTranslatingChange(false);
       options.onDefinitionLoadingChange(false);
+      options.onAudioLoadingChange(false);
       clearAllRequestState();
       reconnectTimeoutId = window.setTimeout(() => {
         connectSocket();
@@ -18081,8 +18185,10 @@ var Client = (options) => {
     },
     clearAllRequestState,
     clearDefinitionRequestState,
+    clearAudioRequestState,
     sendTranslateRequest,
-    sendDefinitionsRequest
+    sendDefinitionsRequest,
+    sendAudioRequest
   };
 };
 // src/utils/WebUtils.ts
@@ -18100,7 +18206,7 @@ var languageOptions = [
   { label: "Russian", value: "Russian" },
   { label: "French", value: "French" }
 ];
-var normalizeText2 = (text) => text.replace(/\s+/g, " ").trim();
+var normalizeText3 = (text) => text.replace(/\s+/g, " ").trim();
 var isSpaceSeparatedLanguage = (language) => !language.toLowerCase().includes("chinese") && !language.toLowerCase().includes("japanese");
 var noSpaceBeforePunctuationPattern = /^[.,!?;:%)\]\}»”’、。，！？；：]$/;
 var noSpaceAfterPunctuationPattern = /^[(\[{«“‘]$/;
@@ -18158,6 +18264,8 @@ var App = () => {
   const [selectedOutputWords, setSelectedOutputWords] = import_react6.useState([]);
   const [wordDefinitions, setWordDefinitions] = import_react6.useState([]);
   const [isDefinitionLoading, setIsDefinitionLoading] = import_react6.useState(false);
+  const [isAudioLoading, setIsAudioLoading] = import_react6.useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = import_react6.useState(false);
   const [isConnectionDotDelayComplete, setIsConnectionDotDelayComplete] = import_react6.useState(false);
   const clientRef = import_react6.useRef(null);
   const inputTextareaRef = import_react6.useRef(null);
@@ -18167,14 +18275,72 @@ var App = () => {
   const targetLanguageRef = import_react6.useRef(targetLanguage);
   const selectedModelRef = import_react6.useRef(selectedModel);
   const CacheRef = import_react6.useRef(Cache());
+  const audioCacheRef = import_react6.useRef(AudioCache());
   const headerSectionRef = import_react6.useRef(null);
   const paneStackRef = import_react6.useRef(null);
+  const audioSourceUrlRef = import_react6.useRef("");
+  const activeAudioRef = import_react6.useRef(null);
+  const pendingAudioRequestTextRef = import_react6.useRef("");
+  const clearAudioPlayback = () => {
+    setIsAudioPlaying(false);
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.src = "";
+      activeAudioRef.current = null;
+    }
+    if (!audioSourceUrlRef.current) {
+      return;
+    }
+    URL.revokeObjectURL(audioSourceUrlRef.current);
+    audioSourceUrlRef.current = "";
+  };
+  const createAudioUrlFromBase64 = (audioBase64, mimeType) => {
+    const binaryAudio = atob(audioBase64);
+    const audioBytes = new Uint8Array(binaryAudio.length);
+    for (let index = 0;index < binaryAudio.length; index += 1) {
+      audioBytes[index] = binaryAudio.charCodeAt(index);
+    }
+    const audioBlob = new Blob([audioBytes], { type: mimeType || "audio/pcm" });
+    return URL.createObjectURL(audioBlob);
+  };
+  const playAudio = (audioBase64, mimeType) => {
+    const nextAudioSourceUrl = createAudioUrlFromBase64(audioBase64, mimeType);
+    clearAudioPlayback();
+    audioSourceUrlRef.current = nextAudioSourceUrl;
+    const audio = new Audio(nextAudioSourceUrl);
+    activeAudioRef.current = audio;
+    setIsAudioPlaying(true);
+    audio.onended = () => {
+      setIsAudioPlaying(false);
+      if (activeAudioRef.current === audio) {
+        activeAudioRef.current = null;
+      }
+      if (audioSourceUrlRef.current === nextAudioSourceUrl) {
+        URL.revokeObjectURL(nextAudioSourceUrl);
+        audioSourceUrlRef.current = "";
+      }
+    };
+    audio.onerror = () => {
+      setErrorText("Unable to play audio");
+      clearAudioPlayback();
+    };
+    audio.play().catch(() => {
+      setErrorText("Unable to play audio");
+      clearAudioPlayback();
+    });
+    setErrorText("");
+  };
   import_react6.useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setIsConnectionDotDelayComplete(true);
     }, 1000);
     return () => {
       window.clearTimeout(timeoutId);
+    };
+  }, []);
+  import_react6.useEffect(() => {
+    return () => {
+      clearAudioPlayback();
     };
   }, []);
   import_react6.useEffect(() => {
@@ -18201,7 +18367,7 @@ var App = () => {
       resizeObserver.disconnect();
     };
   }, []);
-  const normalizedInputText = normalizeText2(inputText);
+  const normalizedInputText = normalizeText3(inputText);
   const hasInputText = !!normalizedInputText;
   const hasOutputWords = outputWords.length > 0;
   const isSpinnerVisible = isTranslating && !!latestRequestSnapshot.id && normalizedInputText === latestRequestSnapshot.normalizedInputText;
@@ -18221,6 +18387,8 @@ var App = () => {
           selection.removeAllRanges();
         }
         setOutputWords(words);
+        clearAudioPlayback();
+        setIsAudioLoading(false);
         definitionContextRef.current = joinOutputTokens(words, targetLanguageRef.current, "word");
         setSelectedOutputWords(autoDefinitionWords);
         setWordDefinitions([]);
@@ -18228,6 +18396,7 @@ var App = () => {
         client.clearDefinitionRequestState();
       },
       onTranslateError: (error) => {
+        setIsAudioLoading(false);
         setErrorText(error);
       },
       onDefinitionsSuccess: (definitions) => {
@@ -18249,6 +18418,23 @@ var App = () => {
       onDefinitionsError: () => {
         setWordDefinitions([]);
         setIsDefinitionLoading(false);
+      },
+      onAudioLoadingChange: setIsAudioLoading,
+      onAudioSuccess: (audioBase64, mimeType) => {
+        if (pendingAudioRequestTextRef.current) {
+          audioCacheRef.current.set({
+            text: pendingAudioRequestTextRef.current,
+            audioBase64,
+            mimeType
+          });
+        }
+        playAudio(audioBase64, mimeType);
+        pendingAudioRequestTextRef.current = "";
+      },
+      onAudioError: (errorText2) => {
+        setIsAudioLoading(false);
+        setErrorText(errorText2);
+        pendingAudioRequestTextRef.current = "";
       }
     });
     clientRef.current = client;
@@ -18321,6 +18507,8 @@ var App = () => {
       setSelectedOutputWords([]);
       setWordDefinitions([]);
       setIsDefinitionLoading(false);
+      setIsAudioLoading(false);
+      clearAudioPlayback();
       setErrorText("");
       setDebouncedRequest(null);
       clientRef.current?.clearAllRequestState();
@@ -18344,6 +18532,8 @@ var App = () => {
       setSelectedOutputWords([]);
       setWordDefinitions([]);
       setIsDefinitionLoading(false);
+      setIsAudioLoading(false);
+      clearAudioPlayback();
       setErrorText("");
       setDebouncedRequest(null);
       clientRef.current?.clearAllRequestState();
@@ -18470,13 +18660,33 @@ var App = () => {
             })),
             selectionWordJoiner: isSpaceSeparatedLanguage(targetLanguage) ? " " : "",
             animateOnMount: true,
-            footer: /* @__PURE__ */ jsx_dev_runtime7.jsxDEV(Transliteration, {
-              value: joinOutputTokens(outputWords, targetLanguage, "literal", { forceSpaceSeparated: true }),
-              isVisible: isTransliterationVisible,
-              onToggle: () => setIsTransliterationVisible((value) => !value)
+            footer: /* @__PURE__ */ jsx_dev_runtime7.jsxDEV(jsx_dev_runtime7.Fragment, {
+              children: /* @__PURE__ */ jsx_dev_runtime7.jsxDEV(Transliteration, {
+                value: joinOutputTokens(outputWords, targetLanguage, "literal", { forceSpaceSeparated: true }),
+                isVisible: isTransliterationVisible,
+                onToggle: () => setIsTransliterationVisible((value) => !value)
+              }, undefined, false, undefined, this)
             }, undefined, false, undefined, this),
             enableCopyButton: true,
             copyValue: joinOutputTokens(outputWords, targetLanguage, "word"),
+            enableAudioButton: !isAudioPlaying,
+            isAudioLoading,
+            onAudioClick: () => {
+              const outputText = joinOutputTokens(outputWords, targetLanguage, "word");
+              if (!outputText.trim()) {
+                return;
+              }
+              const cachedAudio = audioCacheRef.current.get(outputText);
+              if (cachedAudio) {
+                playAudio(cachedAudio.audioBase64, cachedAudio.mimeType);
+                return;
+              }
+              pendingAudioRequestTextRef.current = outputText;
+              clientRef.current?.sendAudioRequest({
+                text: outputText,
+                model: selectedModelRef.current
+              });
+            },
             className: "fade-in",
             onSelectionChange: (selectionWords) => {
               setSelectedOutputWords(selectionWords);
@@ -18501,7 +18711,7 @@ var App = () => {
       isLocal() && !isMobile() && /* @__PURE__ */ jsx_dev_runtime7.jsxDEV("span", {
         className: "app-version",
         "aria-label": "App version",
-        children: "v0.2.6"
+        children: "v0.2.7"
       }, undefined, false, undefined, this)
     ]
   }, undefined, true, undefined, this);

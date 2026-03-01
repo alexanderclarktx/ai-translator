@@ -5,4 +5,5 @@ export type Translator = {
     words: WordToken[]
   }>
   getDefinitions: (word: string, targetLanguage: string, context: string) => Promise<WordDefinition[]>
+  getAudio: (text: string) => Promise<Blob>
 }

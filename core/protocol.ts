@@ -28,6 +28,13 @@ type WsDefinitionsRequest = {
   model?: Model
 }
 
+type WsAudioRequest = {
+  type: "translate.audio.request"
+  requestId: string
+  text: string
+  model?: Model
+}
+
 type WsReady = {
   type: "ready"
 }
@@ -44,6 +51,13 @@ type WsDefinitionsSuccess = {
   definitions: WordDefinition[]
 }
 
+type WsAudioSuccess = {
+  type: "translate.audio.success"
+  requestId: string
+  audioBase64: string
+  mimeType: string
+}
+
 type WsError = {
   type: "translate.error"
   requestId?: string
@@ -53,14 +67,18 @@ type WsError = {
 type WsClientMessage =
   | WsRequest
   | WsDefinitionsRequest
+  | WsAudioRequest
 
 type WsServerMessage =
   | WsReady
   | WsSuccess
   | WsDefinitionsSuccess
+  | WsAudioSuccess
   | WsError
 
 export type {
+  WsAudioRequest,
+  WsAudioSuccess,
   Model,
   WordToken,
   WordDefinition,

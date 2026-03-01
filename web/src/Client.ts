@@ -1,4 +1,6 @@
-import { Model, WsDefinitionsRequest, WsRequest, WsServerMessage, WordDefinition, WordToken } from "@template/core"
+import {
+  Model, WsAudioRequest, WsDefinitionsRequest, WsRequest, WsServerMessage, WordDefinition, WordToken
+} from "@template/core"
 import { isLocal, normalizeDefinition } from "@template/web"
 
 export type RequestSnapshot = {
@@ -29,6 +31,9 @@ export type ClientOptions = {
   onTranslateError: (errorText: string) => void
   onDefinitionsSuccess: (definitions: WordDefinition[]) => void
   onDefinitionsError: () => void
+  onAudioLoadingChange: (isLoading: boolean) => void
+  onAudioSuccess: (audioBase64: string, mimeType: string) => void
+  onAudioError: (errorText: string) => void
 }
 
 export type Client = {
@@ -37,8 +42,10 @@ export type Client = {
   setCurrentNormalizedInputText: (normalizedInputText: string) => void
   clearAllRequestState: () => void
   clearDefinitionRequestState: () => void
+  clearAudioRequestState: () => void
   sendTranslateRequest: (requestInput: TranslateRequestInput) => void
   sendDefinitionsRequest: (requestInput: DefinitionsRequestInput) => void
+  sendAudioRequest: (requestInput: { text: string, model: Model }) => void
 }
 
 const normalizeText = (text: string) => text.replace(/\s+/g, " ").trim()
@@ -73,6 +80,7 @@ export const Client = (options: ClientOptions): Client => {
   let lastRequestedSignature = ""
   let latestDefinitionsRequestId = ""
   let lastDefinitionRequestSignature = ""
+  let latestAudioRequestId = ""
 
   const clearReconnectTimeout = () => {
     if (reconnectTimeoutId === null) {
@@ -88,12 +96,18 @@ export const Client = (options: ClientOptions): Client => {
     lastDefinitionRequestSignature = ""
   }
 
+  const clearAudioRequestState = () => {
+    latestAudioRequestId = ""
+    options.onAudioLoadingChange(false)
+  }
+
   const clearAllRequestState = () => {
     latestRequest = { id: "", normalizedInputText: "" }
     options.onLatestRequestChange(latestRequest)
     currentNormalizedInputText = ""
     lastRequestedSignature = ""
     clearDefinitionRequestState()
+    clearAudioRequestState()
   }
 
   const sendTranslateRequest = (requestInput: TranslateRequestInput) => {
@@ -167,6 +181,28 @@ export const Client = (options: ClientOptions): Client => {
     socket.send(JSON.stringify(request))
   }
 
+  const sendAudioRequest = (requestInput: { text: string, model: Model }) => {
+    const normalizedText = normalizeText(requestInput.text)
+
+    if (!normalizedText || !socket || socket.readyState !== WebSocket.OPEN) {
+      return
+    }
+
+    requestCounter += 1
+    const requestId = `${Date.now()}-${requestCounter}`
+    latestAudioRequestId = requestId
+    options.onAudioLoadingChange(true)
+
+    const request: WsAudioRequest = {
+      type: "translate.audio.request",
+      requestId,
+      text: normalizedText,
+      model: requestInput.model
+    }
+
+    socket.send(JSON.stringify(request))
+  }
+
   const connectSocket = () => {
     clearReconnectTimeout()
 
@@ -212,12 +248,31 @@ export const Client = (options: ClientOptions): Client => {
         return
       }
 
+      if (message.type === "translate.audio.success") {
+        if (message.requestId !== latestAudioRequestId) {
+          return
+        }
+
+        options.onAudioLoadingChange(false)
+        options.onAudioSuccess(message.audioBase64, message.mimeType)
+        return
+      }
+
       if (
         message.type === "translate.error" &&
         message.requestId &&
         message.requestId === latestDefinitionsRequestId
       ) {
         options.onDefinitionsError()
+        return
+      }
+
+      if (
+        message.type === "translate.error" &&
+        message.requestId &&
+        message.requestId === latestAudioRequestId
+      ) {
+        options.onAudioError(message.error || "Audio generation failed")
         return
       }
 
@@ -265,6 +320,7 @@ export const Client = (options: ClientOptions): Client => {
       options.onSocketOpenChange(false)
       options.onTranslatingChange(false)
       options.onDefinitionLoadingChange(false)
+      options.onAudioLoadingChange(false)
       clearAllRequestState()
       reconnectTimeoutId = window.setTimeout(() => {
         connectSocket()
@@ -297,7 +353,9 @@ export const Client = (options: ClientOptions): Client => {
     },
     clearAllRequestState,
     clearDefinitionRequestState,
+    clearAudioRequestState,
     sendTranslateRequest,
-    sendDefinitionsRequest
+    sendDefinitionsRequest,
+    sendAudioRequest
   }
 }
