@@ -38,201 +38,310 @@ type DefinitionsStructuredOutput = {
   definitions: WordDefinition[]
 }
 
-export const OpenAiTranslator = (): Translator => ({
-  translate: async (text, targetLanguage) => {
-    const apiKey = process.env.OPENAI_API_KEY
+export const OpenAiTranslator = (): Translator => {
 
-    if (!apiKey) {
-      throw new Error("Missing OPENAI_API_KEY")
-    }
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) throw new Error("Missing OPENAI_API_KEY")
 
-    const rawText = await runOpenAiRealtimeRequest(
-      apiKey,
-      buildTranslationPrompt(text, targetLanguage),
-      "You are a translation engine. Translate accurately and preserve meaning, tone, and formatting where possible."
-    )
+  const model = "gpt-realtime"
+  const timeoutMs = 3000
 
-    return parseStructuredTranslation(rawText)
-  },
-  getDefinitions: async (word, targetLanguage, context) => {
-    const apiKey = process.env.OPENAI_API_KEY
-
-    if (!apiKey) {
-      throw new Error("Missing OPENAI_API_KEY")
-    }
-
-    const rawText = await runOpenAiRealtimeRequest(
-      apiKey,
-      buildDefinitionPrompt(word, targetLanguage, context),
-      "You write concise dictionary-style definitions. Return valid JSON only."
-    )
-
-    return parseStructuredDefinitions(rawText, word).definitions
+  type QueuedRequest = {
+    prompt: string
+    instructions: string
+    resolve: (value: string) => void
+    reject: (error: Error) => void
   }
-})
 
-const runOpenAiRealtimeRequest = async (
-  apiKey: string,
-  prompt: string,
-  instructions: string
-) => {
-  const model =
-    process.env.OPENAI_REALTIME_MODEL ||
-    process.env.OPENAI_MODEL ||
-    "gpt-realtime"
-  const timeoutMs = Number(process.env.OPENAI_REALTIME_TIMEOUT_MS || "30000")
-  const requestStartedAt = performance.now()
+  type ActiveRequest = QueuedRequest & {
+    startedAt: number
+    timeout: ReturnType<typeof setTimeout>
+    streamedText: string
+    receivedDoneEvent: boolean
+  }
 
-  return await new Promise<string>((resolve, reject) => {
-    let isSettled = false
-    let streamedText = ""
-    let receivedDoneEvent = false
-    let ws: WebSocket
+  let ws: WebSocket | null = null
+  let isWsOpen = false
+  let connectPromise: Promise<WebSocket> | null = null
+  let activeRequest: ActiveRequest | null = null
+  const queuedRequests: QueuedRequest[] = []
 
-    const settleError = (error: unknown) => {
-      if (isSettled) {
-        return
-      }
+  const toError = (error: unknown, fallbackMessage: string) => {
+    return error instanceof Error ? error : new Error(fallbackMessage)
+  }
 
-      isSettled = true
-      clearTimeout(timeout)
-      reject(error instanceof Error ? error : new Error("OpenAI request failed"))
+  const resetConnection = () => {
+    ws = null
+    isWsOpen = false
+    connectPromise = null
+  }
+
+  const settleActiveError = (error: unknown) => {
+    if (!activeRequest) {
+      return
     }
 
-    const settleSuccess = (rawText: string) => {
-      if (isSettled) {
-        return
-      }
+    const currentRequest = activeRequest
+    activeRequest = null
+    clearTimeout(currentRequest.timeout)
+    currentRequest.reject(toError(error, "OpenAI request failed"))
+    void processNextRequest()
+  }
 
-      const responseDurationMs = performance.now() - requestStartedAt
-      console.log(
-        `[openai] response received in ${responseDurationMs.toFixed(0)}ms (model ${model})`
-      )
-
-      isSettled = true
-      clearTimeout(timeout)
-      resolve(rawText)
+  const settleActiveSuccess = (rawText: string) => {
+    if (!activeRequest) {
+      return
     }
 
-    const timeout = setTimeout(() => {
-      settleError(new Error(`OpenAI realtime request timed out after ${timeoutMs}ms`))
-      ws.close()
-    }, timeoutMs)
+    const currentRequest = activeRequest
+    const responseDurationMs = performance.now() - currentRequest.startedAt
+    console.log(
+      `[openai] response received in ${responseDurationMs.toFixed(0)}ms (model ${model})`
+    )
 
-    ws = new WebSocket(`wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`, {
-      // @ts-expect-error
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "OpenAI-Beta": "realtime=v1"
-      }
-    })
+    activeRequest = null
+    clearTimeout(currentRequest.timeout)
+    currentRequest.resolve(rawText)
+    void processNextRequest()
+  }
 
-    ws.addEventListener("open", () => {
-      ws.send(
-        JSON.stringify({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: prompt
-              }
-            ]
-          }
-        })
-      )
+  const parseRealtimeEvent = (rawData: unknown): OpenAiRealtimeServerEvent | null => {
+    try {
+      if (typeof rawData !== "string") {
+        const messageText =
+          rawData instanceof Uint8Array
+            ? Buffer.from(rawData).toString("utf8")
+            : String(rawData)
 
-      ws.send(
-        JSON.stringify({
-          type: "response.create",
-          response: {
-            modalities: ["text"],
-            max_output_tokens: 1024,
-            instructions
-          }
-        })
-      )
-    })
-
-    ws.addEventListener("message", (event) => {
-      let parsedEvent: OpenAiRealtimeServerEvent
-
-      try {
-        if (typeof event.data !== "string") {
-          const messageText =
-            event.data instanceof Uint8Array
-              ? Buffer.from(event.data).toString("utf8")
-              : String(event.data)
-
-          parsedEvent = JSON.parse(messageText) as OpenAiRealtimeServerEvent
-        } else {
-          parsedEvent = JSON.parse(event.data) as OpenAiRealtimeServerEvent
-        }
-      } catch {
-        return
+        return JSON.parse(messageText) as OpenAiRealtimeServerEvent
       }
 
-      if (parsedEvent.type === "error") {
-        settleError(
-          new Error(parsedEvent.error?.message || "OpenAI realtime request failed")
+      return JSON.parse(rawData) as OpenAiRealtimeServerEvent
+    } catch {
+      return null
+    }
+  }
+
+  const onRealtimeMessage = (rawData: unknown) => {
+    const parsedEvent = parseRealtimeEvent(rawData)
+
+    if (!parsedEvent || !activeRequest) {
+      return
+    }
+
+    if (parsedEvent.type === "error") {
+      settleActiveError(
+        new Error(parsedEvent.error?.message || "OpenAI realtime request failed")
+      )
+      return
+    }
+
+    if (
+      parsedEvent.type === "response.output_text.delta" &&
+      typeof parsedEvent.delta === "string"
+    ) {
+      activeRequest.streamedText += parsedEvent.delta
+      return
+    }
+
+    if (
+      parsedEvent.type === "response.output_text.done" &&
+      typeof parsedEvent.text === "string" &&
+      !activeRequest.streamedText.trim()
+    ) {
+      activeRequest.streamedText = parsedEvent.text
+      return
+    }
+
+    if (parsedEvent.type !== "response.done") {
+      return
+    }
+
+    activeRequest.receivedDoneEvent = true
+
+    const failedStatus =
+      parsedEvent.response?.status &&
+      parsedEvent.response.status !== "completed"
+
+    if (failedStatus) {
+      settleActiveError(
+        new Error(
+          parsedEvent.response?.status_details?.error?.message ||
+          `OpenAI response ended with status '${parsedEvent.response?.status}'`
         )
-        ws.close()
-        return
-      }
+      )
+      return
+    }
 
-      if (
-        parsedEvent.type === "response.output_text.delta" &&
-        typeof parsedEvent.delta === "string"
-      ) {
-        streamedText += parsedEvent.delta
-        return
-      }
+    const doneText = getResponseTextFromDoneEvent(parsedEvent)
+    settleActiveSuccess(activeRequest.streamedText || doneText)
+  }
 
-      if (
-        parsedEvent.type === "response.output_text.done" &&
-        typeof parsedEvent.text === "string" &&
-        !streamedText.trim()
-      ) {
-        streamedText = parsedEvent.text
-        return
-      }
+  const ensureConnected = async (): Promise<WebSocket> => {
+    const currentSocket = ws
 
-      if (parsedEvent.type === "response.done") {
-        receivedDoneEvent = true
+    if (currentSocket && isWsOpen && currentSocket.readyState === WebSocket.OPEN) {
+      return currentSocket
+    }
 
-        const failedStatus =
-          parsedEvent.response?.status &&
-          parsedEvent.response.status !== "completed"
+    if (connectPromise) {
+      return connectPromise
+    }
 
-        if (failedStatus) {
-          settleError(
-            new Error(
-              parsedEvent.response?.status_details?.error?.message ||
-              `OpenAI response ended with status '${parsedEvent.response?.status}'`
-            )
-          )
-          ws.close()
-          return
+    console.log(`[openai] connecting to realtime websocket (model ${model})`)
+
+    connectPromise = new Promise<WebSocket>((resolve, reject) => {
+      const nextSocket = new WebSocket(
+        `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
+        {
+          // @ts-expect-error
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "OpenAI-Beta": "realtime=v1"
+          }
         }
+      )
 
-        const doneText = getResponseTextFromDoneEvent(parsedEvent)
-        settleSuccess(streamedText || doneText)
-        ws.close()
+      const onOpen = () => {
+        isWsOpen = true
+        ws = nextSocket
+        resolve(nextSocket)
       }
-    })
 
-    ws.addEventListener("error", () => {
-      settleError(new Error("OpenAI realtime websocket error"))
-    })
-
-    ws.addEventListener("close", () => {
-      if (!isSettled && !receivedDoneEvent) {
-        settleError(new Error("OpenAI realtime websocket closed before completion"))
+      const onErrorBeforeOpen = () => {
+        resetConnection()
+        reject(new Error("OpenAI realtime websocket connection failed"))
       }
+
+      nextSocket.addEventListener("open", onOpen, { once: true })
+      nextSocket.addEventListener("error", onErrorBeforeOpen, { once: true })
+      nextSocket.addEventListener("message", (event) => {
+        onRealtimeMessage(event.data)
+      })
+      nextSocket.addEventListener("error", () => {
+        settleActiveError(new Error("OpenAI realtime websocket error"))
+      })
+      nextSocket.addEventListener("close", () => {
+        const closedBeforeCompletion =
+          !!activeRequest && !activeRequest.receivedDoneEvent
+
+        resetConnection()
+
+        if (closedBeforeCompletion) {
+          settleActiveError(
+            new Error("OpenAI realtime websocket closed before completion")
+          )
+        }
+      })
     })
-  })
+
+    try {
+      return await connectPromise
+    } finally {
+      connectPromise = null
+    }
+  }
+
+  const sendActiveRequest = async () => {
+    if (!activeRequest) {
+      return
+    }
+
+    const socket = await ensureConnected()
+
+    socket.send(
+      JSON.stringify({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: activeRequest.prompt
+            }
+          ]
+        }
+      })
+    )
+
+    socket.send(
+      JSON.stringify({
+        type: "response.create",
+        response: {
+          modalities: ["text"],
+          max_output_tokens: 1024,
+          instructions: activeRequest.instructions
+        }
+      })
+    )
+  }
+
+  const processNextRequest = async () => {
+    if (activeRequest || !queuedRequests.length) {
+      return
+    }
+
+    const nextRequest = queuedRequests.shift()
+
+    if (!nextRequest) {
+      return
+    }
+
+    activeRequest = {
+      ...nextRequest,
+      startedAt: performance.now(),
+      timeout: setTimeout(() => {
+        settleActiveError(
+          new Error(`OpenAI realtime request timed out after ${timeoutMs}ms`)
+        )
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.close()
+        }
+      }, timeoutMs),
+      streamedText: "",
+      receivedDoneEvent: false
+    }
+
+    try {
+      await sendActiveRequest()
+    } catch (error) {
+      settleActiveError(error)
+    }
+  }
+
+  const runOpenAiRealtimeRequest = async (prompt: string, instructions: string) => {
+    return await new Promise<string>((resolve, reject) => {
+      queuedRequests.push({
+        prompt,
+        instructions,
+        resolve,
+        reject: (error) => reject(error)
+      })
+
+      void processNextRequest()
+    })
+  }
+
+  return {
+    translate: async (text, targetLanguage) => {
+      const rawText = await runOpenAiRealtimeRequest(
+        buildTranslationPrompt(text, targetLanguage),
+        "You are a translation engine. Translate accurately and preserve meaning, tone, and formatting where possible."
+      )
+
+      return parseStructuredTranslation(rawText)
+    },
+    getDefinitions: async (word, targetLanguage, context) => {
+      const rawText = await runOpenAiRealtimeRequest(
+        buildDefinitionPrompt(word, targetLanguage, context),
+        "You write concise dictionary-style definitions. Return valid JSON only."
+      )
+
+      return parseStructuredDefinitions(rawText, word).definitions
+    }
+  }
 }
 
 const parseStructuredTranslation = (rawText: string) => {
@@ -270,9 +379,9 @@ const normalizeTranslationLiteralPairs = (parsed: unknown): TranslationWordToken
   const arrayCandidate = Array.isArray(parsed)
     ? parsed
     : parsed &&
-        typeof parsed === "object" &&
-        "pairs" in parsed &&
-        Array.isArray(parsed.pairs)
+      typeof parsed === "object" &&
+      "pairs" in parsed &&
+      Array.isArray(parsed.pairs)
       ? parsed.pairs
       : []
 
