@@ -325,7 +325,7 @@ main {
   visibility: hidden;
   pointer-events: none;
   transform: translateY(-2px) scale(0.8);
-  cursor: pointer;
+  cursor: default;
   transition: opacity 300ms ease, transform 300ms ease, color 120ms ease, visibility 0s linear 300ms;
 }
 
@@ -382,11 +382,8 @@ main {
 }
 
 .output-pane-action-button.output-pane-action-button-loading {
-  opacity: 1;
-  visibility: visible;
   pointer-events: none;
   color: rgba(16, 24, 32, 0.45);
-  transform: translateY(0) scale(1);
 }
 
 .output-pane-action-spinner {
