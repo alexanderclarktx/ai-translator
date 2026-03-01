@@ -16,6 +16,9 @@ type OpenAiRealtimeServerEvent = {
         message?: string
       }
     }
+    usage?: {
+      output_tokens?: number
+    }
     output?: {
       content?: {
         type?: string
@@ -97,15 +100,9 @@ export const OpenAiTranslator = (): Translator => {
   }
 
   const settleActiveSuccess = () => {
-    if (!activeRequest) {
-      return
-    }
+    if (!activeRequest) return
 
     const currentRequest = activeRequest
-    const responseDurationMs = performance.now() - currentRequest.startedAt
-    console.log(
-      `[openai] response received in ${responseDurationMs.toFixed(0)}ms (model ${model})`
-    )
 
     activeRequest = null
     clearTimeout(currentRequest.timeout)
@@ -229,6 +226,12 @@ export const OpenAiTranslator = (): Translator => {
     if (!activeRequest.streamedText.trim() && doneText) {
       activeRequest.streamedText = doneText
     }
+
+    const outputTokens = getOutputTokenCountFromDoneEvent(parsedEvent)
+    const responseDurationMs = performance.now() - activeRequest.startedAt
+    console.log(
+      `[openai] response received in ${responseDurationMs.toFixed(0)}ms (model ${model}) (tokens: ${outputTokens})`
+    )
 
     settleActiveSuccess()
   }
@@ -507,6 +510,16 @@ const getResponseTextFromDoneEvent = (event: OpenAiRealtimeServerEvent) => {
       .join("")
       .trim() || ""
   )
+}
+
+const getOutputTokenCountFromDoneEvent = (event: OpenAiRealtimeServerEvent) => {
+  const outputTokens = event.response?.usage?.output_tokens
+
+  if (typeof outputTokens === "number" && Number.isFinite(outputTokens)) {
+    return outputTokens
+  }
+
+  return null
 }
 
 const buildTranslationPrompt = (text: string, targetLanguage: string) => {
